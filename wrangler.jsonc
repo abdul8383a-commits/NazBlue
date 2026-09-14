@@ -1,6 +1,6 @@
 {
   "$schema": "node_modules/wrangler/config-schema.json",
-  "name": "bluenaz",
+  "name": "nazblue",
   "main": ".open-next/worker.js",
   "compatibility_date": "2026-09-11",
   "compatibility_flags": [
@@ -16,7 +16,7 @@
   "services": [
     {
       "binding": "WORKER_SELF_REFERENCE",
-      "service": "bluenaz"
+      "service": "nazblue"
     }
   ],
   "observability": {
