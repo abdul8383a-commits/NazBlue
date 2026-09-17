@@ -5,7 +5,7 @@ import { createClient } from "@/lib/supabase/client";
 import { useRouter } from "next/navigation";
 import { Upload, X, Loader2 } from "lucide-react";
 
-export default function ProductForm({ categories }: { categories: any[] }) {
+export default function ProductForm({ categories, initialData }: { categories: any[], initialData?: any }) {
   const router = useRouter();
   const supabase = createClient();
   
@@ -13,21 +13,22 @@ export default function ProductForm({ categories }: { categories: any[] }) {
   const [uploading, setUploading] = useState(false);
   
   const [formData, setFormData] = useState({
-    name: "",
-    description: "",
-    category_id: categories[0]?.id || "",
-    gender: "unisex",
-    base_price: "",
-    discount_price: "",
-    is_active: true,
+    name: initialData?.name || "",
+    description: initialData?.description || "",
+    category_id: initialData?.category_id || categories[0]?.id || "",
+    gender: initialData?.gender || "unisex",
+    base_price: initialData?.base_price?.toString() || "",
+    discount_price: initialData?.discount_price?.toString() || "",
+    is_active: initialData?.is_active ?? true,
   });
   
-  const [images, setImages] = useState<string[]>([]);
+  const [images, setImages] = useState<string[]>(initialData?.images || []);
   
   // Variants
-  const [variants, setVariants] = useState([
-    { size: "M", color: "Blue", stock_quantity: "10", sku: "" }
-  ]);
+  const [variants, setVariants] = useState(initialData?.product_variants?.length > 0 
+    ? initialData.product_variants 
+    : [{ size: "M", color: "Blue", stock_quantity: "10", sku: "" }]
+  );
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) => {
     const value = e.target.type === 'checkbox' ? (e.target as HTMLInputElement).checked : e.target.value;

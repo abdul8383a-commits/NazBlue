@@ -50,6 +50,11 @@ export default async function Account() {
               <button className="mt-4 w-full bg-gray-100 dark:bg-white/10 hover:bg-gray-200 dark:hover:bg-white/20 text-gray-800 dark:text-white py-2 rounded text-sm font-semibold transition-colors">
                 Edit Profile
               </button>
+              {profile?.role === 'admin' && (
+                <a href="/admin" className="block text-center mt-2 w-full bg-primary hover:bg-primary/90 text-white py-2 rounded text-sm font-semibold transition-colors">
+                  Go to Admin Dashboard
+                </a>
+              )}
             </div>
           </div>
         </div>
