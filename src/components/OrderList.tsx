@@ -63,7 +63,8 @@ export default function OrderList({ orders }: { orders: any[] }) {
               </p>
             </div>
             <div className="text-right">
-              <p className="font-bold text-primary dark:text-white">${order.total_amount.toFixed(2)}</p>
+              <p className="text-sm text-gray-500 dark:text-white/60">Total Amount</p>
+              <p className="font-bold text-primary dark:text-white">₹{order.total_amount.toFixed(2)}</p>
               <p className="text-xs uppercase bg-blue-100 dark:bg-blue-900/50 text-blue-800 dark:text-blue-200 px-2 py-1 rounded inline-block mt-1 font-bold tracking-wider">
                 {order.status}
               </p>
@@ -72,9 +73,9 @@ export default function OrderList({ orders }: { orders: any[] }) {
 
           <div className="space-y-2 mb-4 text-sm">
             {order.order_items?.map((item: any) => (
-              <div key={item.id} className="flex justify-between">
-                <span className="text-gray-600 dark:text-gray-300">{item.quantity}x {item.product_variants?.products?.name || "Product"} (Size: {item.product_variants?.size})</span>
-                <span className="text-gray-900 dark:text-white font-medium">${(item.price_at_purchase * item.quantity).toFixed(2)}</span>
+              <div key={item.id} className="flex justify-between items-center text-sm py-2">
+                <span className="text-gray-600 dark:text-white/80">{item.quantity}x {item.product_name} (Size: {item.size}, Color: {item.color})</span>
+                <span className="text-gray-900 dark:text-white font-medium">₹{(item.price_at_purchase * item.quantity).toFixed(2)}</span>
               </div>
             ))}
           </div>

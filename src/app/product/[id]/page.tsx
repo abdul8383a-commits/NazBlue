@@ -88,12 +88,12 @@ export default async function ProductDetail({ params }: { params: Promise<{ id: 
           <div className="flex items-center space-x-4 mb-6">
             {typedProduct.discount_price ? (
               <>
-                <span className="text-2xl font-bold text-primary dark:text-white">${typedProduct.discount_price.toFixed(2)}</span>
-                <span className="text-lg text-gray-500 dark:text-white/60 line-through">${typedProduct.base_price.toFixed(2)}</span>
+                <span className="text-2xl font-bold text-primary dark:text-white">₹{typedProduct.discount_price.toFixed(2)}</span>
+                <span className="text-lg text-gray-500 dark:text-white/60 line-through">₹{typedProduct.base_price.toFixed(2)}</span>
                 <span className="bg-red-100 text-red-800 text-xs font-semibold px-2 py-1 rounded">SALE</span>
               </>
             ) : (
-              <span className="text-2xl font-bold text-primary dark:text-white">${typedProduct.base_price.toFixed(2)}</span>
+              <span className="text-2xl font-bold text-primary dark:text-white">₹{typedProduct.base_price.toFixed(2)}</span>
             )}
           </div>
 

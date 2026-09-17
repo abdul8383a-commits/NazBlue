@@ -29,11 +29,11 @@ export default function ProductCard({ product }: { product: Product }) {
       <div className="mt-1 flex items-center space-x-2">
         {product.discount_price ? (
           <>
-            <span className="font-semibold text-primary dark:text-white">${product.discount_price.toFixed(2)}</span>
-            <span className="text-sm text-gray-500 dark:text-white/60 line-through">${product.base_price.toFixed(2)}</span>
+            <span className="font-semibold text-primary dark:text-white">₹{product.discount_price.toFixed(2)}</span>
+            <span className="text-sm text-gray-500 dark:text-white/60 line-through">₹{product.base_price.toFixed(2)}</span>
           </>
         ) : (
-          <span className="font-semibold text-primary dark:text-white">${product.base_price.toFixed(2)}</span>
+          <span className="font-semibold text-primary dark:text-white">₹{product.base_price.toFixed(2)}</span>
         )}
       </div>
     </Link>

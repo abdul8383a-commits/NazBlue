@@ -46,7 +46,7 @@ export default function ProductForm({ categories, initialData }: { categories: a
   };
 
   const removeVariant = (index: number) => {
-    setVariants(variants.filter((_, i) => i !== index));
+    setVariants(variants.filter((_: any, i: number) => i !== index));
   };
 
   const handleImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -76,7 +76,7 @@ export default function ProductForm({ categories, initialData }: { categories: a
   };
 
   const removeImage = (index: number) => {
-    setImages(images.filter((_, i) => i !== index));
+    setImages(images.filter((_: any, i: number) => i !== index));
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -84,31 +84,49 @@ export default function ProductForm({ categories, initialData }: { categories: a
     setLoading(true);
     
     try {
-      // 1. Create Product
-      const { data: product, error: productError } = await supabase
-        .from('products')
-        .insert({
-          name: formData.name,
-          description: formData.description,
-          category_id: formData.category_id,
-          gender: formData.gender,
-          base_price: parseFloat(formData.base_price),
-          discount_price: formData.discount_price ? parseFloat(formData.discount_price) : null,
-          images: images,
-          is_active: formData.is_active
-        })
-        .select()
-        .single();
+      let productId = initialData?.id;
+
+      const productPayload = {
+        name: formData.name,
+        description: formData.description,
+        category_id: formData.category_id,
+        gender: formData.gender,
+        base_price: parseFloat(formData.base_price),
+        discount_price: formData.discount_price ? parseFloat(formData.discount_price) : null,
+        images: images,
+        is_active: formData.is_active
+      };
+
+      if (initialData) {
+        // Update existing product
+        const { error: productError } = await supabase
+          .from('products')
+          .update(productPayload)
+          .eq('id', productId);
+          
+        if (productError) throw productError;
         
-      if (productError) throw productError;
+        // Delete existing variants
+        await supabase.from('product_variants').delete().eq('product_id', productId);
+      } else {
+        // Create new product
+        const { data: product, error: productError } = await supabase
+          .from('products')
+          .insert(productPayload)
+          .select()
+          .single();
+          
+        if (productError) throw productError;
+        productId = product.id;
+      }
 
       // 2. Create Variants
-      const variantInserts = variants.map(v => ({
-        product_id: product.id,
+      const variantInserts = variants.map((v: any) => ({
+        product_id: productId,
         size: v.size,
         color: v.color,
-        stock_quantity: parseInt(v.stock_quantity),
-        sku: v.sku || `${product.id.substring(0,4)}-${v.size}-${v.color}`.toUpperCase()
+        stock_quantity: parseInt(v.stock_quantity || "0"),
+        sku: v.sku || `${productId.substring(0,4)}-${v.size}-${v.color}`.toUpperCase()
       }));
 
       const { error: variantError } = await supabase
@@ -157,11 +175,11 @@ export default function ProductForm({ categories, initialData }: { categories: a
             </select>
           </div>
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">Base Price ($)</label>
+            <label className="block text-sm font-medium text-gray-700 mb-1">Base Price (₹)</label>
             <input required type="number" step="0.01" name="base_price" value={formData.base_price} onChange={handleChange} className="w-full p-2 border border-gray-300 rounded focus:border-primary focus:ring-1 focus:ring-primary outline-none" />
           </div>
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">Discount Price ($)</label>
+            <label className="block text-sm font-medium text-gray-700 mb-1">Discount Price (₹)</label>
             <input type="number" step="0.01" name="discount_price" value={formData.discount_price} onChange={handleChange} className="w-full p-2 border border-gray-300 rounded focus:border-primary focus:ring-1 focus:ring-primary outline-none" />
           </div>
           <div className="col-span-2 flex items-center mt-2 bg-gray-50 p-3 rounded border">
@@ -198,7 +216,7 @@ export default function ProductForm({ categories, initialData }: { categories: a
         </div>
         
         <div className="space-y-4 pt-2">
-          {variants.map((v, idx) => (
+          {variants.map((v: any, idx: number) => (
             <div key={idx} className="flex gap-4 items-end bg-gray-50 p-3 rounded border border-gray-200">
               <div className="flex-1">
                 <label className="block text-xs font-bold text-gray-500 mb-1 uppercase tracking-wider">Size</label>

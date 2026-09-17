@@ -52,7 +52,7 @@ export default function OrderAdminRow({ order }: { order: any }) {
         {new Date(order.created_at).toLocaleDateString()}
       </td>
       <td className="px-6 py-4 whitespace-nowrap font-bold text-gray-900">
-        ${order.total_amount.toFixed(2)}
+        ₹{order.total_amount.toFixed(2)}
       </td>
       <td className="px-6 py-4 whitespace-nowrap">
         <div className="flex items-center space-x-2">
