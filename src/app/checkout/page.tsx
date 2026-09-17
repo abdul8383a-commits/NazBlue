@@ -137,10 +137,21 @@ export default function CheckoutPage() {
 
   useEffect(() => {
     setMounted(true);
+    
+    // Check if user is authenticated
+    const checkAuth = async () => {
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session) {
+        router.push("/login?redirect=/checkout");
+        return;
+      }
+    };
+    checkAuth();
+
     if (!isLoading && items.length === 0 && step === 1) {
       router.push("/cart");
     }
-  }, [items, isLoading, router, step]);
+  }, [items, isLoading, router, step, supabase.auth]);
 
   // Check pincode when length is 6
   useEffect(() => {
@@ -213,7 +224,11 @@ export default function CheckoutPage() {
     setFormData({ ...formData, city: name });
   };
 
-  const isAddressComplete = Object.values(formData).every(val => val.trim().length > 0) && !pincodeError;
+  const isAddressComplete = Object.entries(formData).every(([key, val]) => {
+    if (key === 'state' && stateOptions.length === 0) return true; // State is optional if no states exist
+    if (key === 'city' && cityOptions.length === 0 && val.trim().length === 0) return false; // City is required even if manually typed
+    return val.trim().length > 0;
+  }) && !pincodeError;
   const fullAddressString = JSON.stringify(formData); 
 
   const validateStockAndProceed = async () => {
