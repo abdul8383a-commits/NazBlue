@@ -45,6 +45,7 @@ export default function EditProfile() {
     const { error: updateError } = await supabase
       .from("users")
       .update({
+        id: user.id,
         first_name: firstName,
         last_name: lastName,
         phone: phone,

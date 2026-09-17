@@ -22,7 +22,7 @@
   "vars": {
     "NEXT_PUBLIC_SUPABASE_URL": "https://ynincrwqbzkpypxzbdng.supabase.co",
     "NEXT_PUBLIC_SUPABASE_ANON_KEY": "sb_publishable_nTbhlhCd3C3CkVS1ycICxg_tBy5CsWB",
-    "RAZORPAY_KEY_ID": "placeholder-razorpay-key-id",
-    "RAZORPAY_KEY_SECRET": "placeholder-razorpay-key-secret"
+    "RAZORPAY_KEY_ID": "rzp_test_TCyMIymgTgCxlB",
+    "RAZORPAY_KEY_SECRET": "gV36wh0uvzDi1IilO9Pt9MQj"
   },
 }
