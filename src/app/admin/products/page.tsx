@@ -64,7 +64,7 @@ export default async function AdminProductsPage() {
                       {p.categories?.name}
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap text-gray-900">
-                      ${p.discount_price || p.base_price}
+                      ₹{p.discount_price || p.base_price}
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap">
                       <span className={`px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${p.is_active ? 'bg-green-100 text-green-800' : 'bg-gray-100 text-gray-800'}`}>

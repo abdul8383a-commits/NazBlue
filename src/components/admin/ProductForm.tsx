@@ -145,6 +145,25 @@ export default function ProductForm({ categories, initialData }: { categories: a
     }
   };
 
+  const handleDelete = async () => {
+    if (!initialData || !window.confirm("Are you sure you want to delete this product? This action cannot be undone.")) return;
+    
+    setLoading(true);
+    try {
+      // First delete variants to satisfy foreign key constraints if no CASCADE is set
+      await supabase.from('product_variants').delete().eq('product_id', initialData.id);
+      
+      const { error } = await supabase.from('products').delete().eq('id', initialData.id);
+      if (error) throw error;
+      
+      router.push('/admin/products');
+      router.refresh();
+    } catch (error: any) {
+      alert("Error deleting product: " + error.message);
+      setLoading(false);
+    }
+  };
+
   return (
     <form onSubmit={handleSubmit} className="max-w-4xl space-y-8 pb-12">
       <div className="bg-white p-6 rounded-lg border border-gray-200 shadow-sm space-y-4">
@@ -242,12 +261,21 @@ export default function ProductForm({ categories, initialData }: { categories: a
         </div>
       </div>
 
-      <div className="flex justify-end gap-4 border-t pt-6">
-        <button type="button" onClick={() => router.back()} className="px-6 py-2.5 border border-gray-300 rounded font-bold text-gray-700 hover:bg-gray-50 transition-colors">Cancel</button>
-        <button type="submit" disabled={loading} className="px-8 py-2.5 bg-[#1E3A8A] text-white rounded font-bold hover:bg-[#1E3A8A]/90 disabled:opacity-50 flex items-center transition-colors shadow-md">
-          {loading && <Loader2 className="w-4 h-4 mr-2 animate-spin" />}
-          Save Product to Store
-        </button>
+      <div className="flex justify-between items-center border-t pt-6">
+        <div>
+          {initialData && (
+            <button type="button" onClick={handleDelete} disabled={loading} className="px-6 py-2.5 bg-red-50 text-red-600 border border-red-200 rounded font-bold hover:bg-red-100 transition-colors">
+              Delete Product
+            </button>
+          )}
+        </div>
+        <div className="flex gap-4">
+          <button type="button" onClick={() => router.back()} className="px-6 py-2.5 border border-gray-300 rounded font-bold text-gray-700 hover:bg-gray-50 transition-colors">Cancel</button>
+          <button type="submit" disabled={loading} className="px-8 py-2.5 bg-[#1E3A8A] text-white rounded font-bold hover:bg-[#1E3A8A]/90 disabled:opacity-50 flex items-center transition-colors shadow-md">
+            {loading && <Loader2 className="w-4 h-4 mr-2 animate-spin" />}
+            Save Product to Store
+          </button>
+        </div>
       </div>
     </form>
   );
