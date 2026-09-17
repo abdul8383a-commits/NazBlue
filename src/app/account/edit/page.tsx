@@ -53,7 +53,8 @@ export default function EditProfile() {
       .eq("id", user.id);
 
     if (updateError) {
-      setError("Failed to update profile. Please try again.");
+      console.error(updateError);
+      setError(`Failed to update profile: ${updateError.message}`);
       setSaving(false);
     } else {
       router.push("/account");
