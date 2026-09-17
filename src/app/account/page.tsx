@@ -41,15 +41,19 @@ export default async function Account() {
               </div>
               <div>
                 <p className="text-sm text-gray-500 dark:text-gray-400">Name</p>
-                <p className="font-medium">{profile?.name || 'Not provided'}</p>
+                <p className="font-medium">
+                  {profile?.first_name || profile?.last_name 
+                    ? `${profile.first_name || ''} ${profile.last_name || ''}`.trim() 
+                    : 'Not provided'}
+                </p>
               </div>
               <div>
                 <p className="text-sm text-gray-500 dark:text-gray-400">Phone</p>
                 <p className="font-medium">{profile?.phone || 'Not provided'}</p>
               </div>
-              <button className="mt-4 w-full bg-gray-100 dark:bg-white/10 hover:bg-gray-200 dark:hover:bg-white/20 text-gray-800 dark:text-white py-2 rounded text-sm font-semibold transition-colors">
+              <a href="/account/edit" className="mt-4 w-full block text-center bg-gray-100 dark:bg-white/10 hover:bg-gray-200 dark:hover:bg-white/20 text-gray-800 dark:text-white py-2 rounded text-sm font-semibold transition-colors">
                 Edit Profile
-              </button>
+              </a>
               {profile?.role === 'admin' && (
                 <a href="/admin" className="block text-center mt-2 w-full bg-primary hover:bg-primary/90 text-white py-2 rounded text-sm font-semibold transition-colors">
                   Go to Admin Dashboard

@@ -148,6 +148,27 @@ export default function CheckoutPage() {
     };
     checkAuth();
 
+    // Load saved address from local storage
+    const savedAddress = localStorage.getItem("blue_naz_saved_address");
+    if (savedAddress) {
+      try {
+        const parsed = JSON.parse(savedAddress);
+        setFormData(parsed);
+        if (parsed.country) {
+          const cCode = Country.getAllCountries().find(c => c.name === parsed.country)?.isoCode;
+          if (cCode) {
+            setSelectedCountryCode(cCode);
+            if (parsed.state) {
+              const sCode = State.getStatesOfCountry(cCode).find(s => s.name === parsed.state)?.isoCode;
+              if (sCode) setSelectedStateCode(sCode);
+            }
+          }
+        }
+      } catch (e) {
+        // ignore parse error
+      }
+    }
+
     if (!isLoading && items.length === 0 && step === 1) {
       router.push("/cart");
     }
@@ -441,7 +462,10 @@ export default function CheckoutPage() {
             </div>
             
             <button 
-              onClick={() => setStep(2)}
+              onClick={() => {
+                localStorage.setItem("blue_naz_saved_address", JSON.stringify(formData));
+                setStep(2);
+              }}
               disabled={!isAddressComplete}
               className="w-full bg-primary text-primary-foreground py-3 rounded font-bold hover:opacity-90 disabled:opacity-50 mt-4"
             >
