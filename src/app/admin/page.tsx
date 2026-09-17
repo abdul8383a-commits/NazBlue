@@ -10,11 +10,37 @@ export default async function AdminDashboard() {
   // Fetch aggregates safely
   const { count: totalOrders } = await supabase.from("orders").select("*", { count: "exact", head: true });
   
-  // Note: For total sales, in a real production app we'd sum this via an RPC or query, but doing it in memory is fine for small datasets
-  const { data: salesData } = await supabase.from("orders").select("total_amount").in("status", ["processing", "shipped", "delivered"]);
+  // Fetch orders from last 7 days
+  const sevenDaysAgo = new Date();
+  sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 6);
+  sevenDaysAgo.setHours(0, 0, 0, 0);
+
+  const { data: salesData } = await supabase
+    .from("orders")
+    .select("total_amount, created_at")
+    .in("status", ["processing", "shipped", "delivered", "pending"])
+    .gte("created_at", sevenDaysAgo.toISOString());
+    
   const { count: pendingOrders } = await supabase.from("orders").select("*", { count: "exact", head: true }).eq("status", "pending");
   
   const totalSales = salesData?.reduce((acc, order) => acc + order.total_amount, 0) || 0;
+
+  // Process sales data for chart (Last 7 Days)
+  const chartData: { name: string, sales: number }[] = [];
+  const days = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
+  
+  for (let i = 6; i >= 0; i--) {
+    const d = new Date();
+    d.setDate(d.getDate() - i);
+    const dayName = days[d.getDay()];
+    const dString = d.toISOString().split('T')[0];
+    
+    // Find all orders that fall on this date
+    const daySales = salesData?.filter(order => order.created_at.startsWith(dString))
+      .reduce((sum, order) => sum + order.total_amount, 0) || 0;
+      
+    chartData.push({ name: dayName, sales: daySales });
+  }
 
   // Fetch low stock items
   const { data: lowStock } = await supabase
@@ -34,7 +60,7 @@ export default async function AdminDashboard() {
           <div className="p-3 bg-blue-100 text-primary rounded-full"><DollarSign className="w-6 h-6" /></div>
           <div>
             <p className="text-sm text-gray-500 font-medium">Total Sales</p>
-            <p className="text-2xl font-bold text-gray-900">${totalSales.toFixed(2)}</p>
+            <p className="text-2xl font-bold text-gray-900">₹{totalSales.toFixed(2)}</p>
           </div>
         </div>
         <div className="bg-white p-6 rounded-lg border border-gray-200 shadow-sm flex items-center space-x-4">
@@ -65,7 +91,7 @@ export default async function AdminDashboard() {
         <div className="lg:col-span-2 bg-white p-6 rounded-lg border border-gray-200 shadow-sm">
           <h3 className="font-bold text-gray-900 mb-6">Sales Overview (Last 7 Days)</h3>
           <div className="h-72 w-full">
-            <AdminChart />
+            <AdminChart data={chartData} />
           </div>
         </div>
 
