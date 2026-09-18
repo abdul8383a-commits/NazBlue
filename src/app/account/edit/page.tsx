@@ -9,6 +9,11 @@ export default function EditProfile() {
   const [firstName, setFirstName] = useState("");
   const [lastName, setLastName] = useState("");
   const [phone, setPhone] = useState("");
+  const [addressLine1, setAddressLine1] = useState("");
+  const [city, setCity] = useState("");
+  const [state, setState] = useState("");
+  const [country, setCountry] = useState("");
+  const [pincode, setPincode] = useState("");
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState("");
@@ -28,6 +33,11 @@ export default function EditProfile() {
         setFirstName(data.first_name || "");
         setLastName(data.last_name || "");
         setPhone(data.phone || "");
+        setAddressLine1(data.address_line1 || "");
+        setCity(data.city || "");
+        setState(data.state || "");
+        setCountry(data.country || "");
+        setPincode(data.pincode || "");
       }
       setLoading(false);
     }
@@ -49,6 +59,11 @@ export default function EditProfile() {
         first_name: firstName,
         last_name: lastName,
         phone: phone,
+        address_line1: addressLine1,
+        city: city,
+        state: state,
+        country: country,
+        pincode: pincode,
         updated_at: new Date().toISOString()
       })
       .eq("id", user.id);
@@ -101,6 +116,62 @@ export default function EditProfile() {
               onChange={e => setPhone(e.target.value)}
               className="w-full p-2 border border-gray-300 dark:border-white/30 rounded bg-transparent dark:text-white focus:outline-none focus:border-primary"
             />
+          </div>
+          
+          <div className="pt-4 border-t dark:border-white/10 mt-6">
+            <h2 className="text-lg font-bold text-gray-900 dark:text-white mb-4">Default Address</h2>
+            
+            <div className="space-y-4">
+              <div>
+                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Street Address</label>
+                <input 
+                  type="text" 
+                  value={addressLine1} 
+                  onChange={e => setAddressLine1(e.target.value)}
+                  className="w-full p-2 border border-gray-300 dark:border-white/30 rounded bg-transparent dark:text-white focus:outline-none focus:border-primary"
+                  placeholder="123 Main St"
+                />
+              </div>
+
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Country</label>
+                  <input 
+                    type="text" 
+                    value={country} 
+                    onChange={e => setCountry(e.target.value)}
+                    className="w-full p-2 border border-gray-300 dark:border-white/30 rounded bg-transparent dark:text-white focus:outline-none focus:border-primary"
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">State</label>
+                  <input 
+                    type="text" 
+                    value={state} 
+                    onChange={e => setState(e.target.value)}
+                    className="w-full p-2 border border-gray-300 dark:border-white/30 rounded bg-transparent dark:text-white focus:outline-none focus:border-primary"
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">City</label>
+                  <input 
+                    type="text" 
+                    value={city} 
+                    onChange={e => setCity(e.target.value)}
+                    className="w-full p-2 border border-gray-300 dark:border-white/30 rounded bg-transparent dark:text-white focus:outline-none focus:border-primary"
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Pincode</label>
+                  <input 
+                    type="text" 
+                    value={pincode} 
+                    onChange={e => setPincode(e.target.value)}
+                    className="w-full p-2 border border-gray-300 dark:border-white/30 rounded bg-transparent dark:text-white focus:outline-none focus:border-primary"
+                  />
+                </div>
+              </div>
+            </div>
           </div>
 
           <div className="pt-4 flex gap-4">

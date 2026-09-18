@@ -51,7 +51,27 @@ export default async function Account() {
                 <p className="text-sm text-gray-500 dark:text-gray-400">Phone</p>
                 <p className="font-medium">{profile?.phone || 'Not provided'}</p>
               </div>
-              <a href="/account/edit" className="mt-4 w-full block text-center bg-gray-100 dark:bg-white/10 hover:bg-gray-200 dark:hover:bg-white/20 text-gray-800 dark:text-white py-2 rounded text-sm font-semibold transition-colors">
+            </div>
+
+            <div className="pt-6 border-t dark:border-white/10 mt-6">
+              <h2 className="text-lg font-bold text-gray-900 dark:text-white mb-4">Default Address</h2>
+              {profile?.address_line1 || profile?.city || profile?.country ? (
+                <div className="text-gray-900 dark:text-white space-y-1">
+                  {profile.address_line1 && <p>{profile.address_line1}</p>}
+                  <p>
+                    {profile.city && `${profile.city}, `}
+                    {profile.state && `${profile.state} `}
+                    {profile.pincode && profile.pincode}
+                  </p>
+                  {profile.country && <p>{profile.country}</p>}
+                </div>
+              ) : (
+                <p className="text-gray-500 dark:text-gray-400">No default address provided.</p>
+              )}
+            </div>
+
+            <div className="mt-8 pt-6 border-t dark:border-white/10">
+              <a href="/account/edit" className="w-full block text-center bg-gray-100 dark:bg-white/10 hover:bg-gray-200 dark:hover:bg-white/20 text-gray-800 dark:text-white py-2 rounded text-sm font-semibold transition-colors">
                 Edit Profile
               </a>
               {profile?.role === 'admin' && (

@@ -138,41 +138,73 @@ export default function CheckoutPage() {
   useEffect(() => {
     setMounted(true);
     
-    // Check if user is authenticated
-    const checkAuth = async () => {
+    // Check if user is authenticated and load profile
+    const initCheckout = async () => {
       const { data: { session } } = await supabase.auth.getSession();
       if (!session) {
         router.push("/login?redirect=/checkout");
         return;
       }
-    };
-    checkAuth();
+      
+      let initialData = null;
 
-    // Load saved address from local storage
-    const savedAddress = localStorage.getItem("blue_naz_saved_address");
-    if (savedAddress) {
-      try {
-        const parsed = JSON.parse(savedAddress);
-        setFormData(parsed);
-        if (parsed.country) {
-          const cCode = Country.getAllCountries().find(c => c.name === parsed.country)?.isoCode;
+      // 1. Try to load from database first (Default Address)
+      const { data: profile } = await supabase.from("users").select("*").eq("id", session.user.id).single();
+      if (profile && (profile.address_line1 || profile.city || profile.country)) {
+        initialData = {
+          firstName: profile.first_name || "",
+          lastName: profile.last_name || "",
+          email: profile.email || session.user.email || "",
+          phoneCode: "+1",
+          phone: profile.phone || "",
+          addressLine1: profile.address_line1 || "",
+          country: profile.country || "",
+          city: profile.city || "",
+          state: profile.state || "",
+          pincode: profile.pincode || ""
+        };
+      } else {
+        // 2. Fallback to localStorage if no default address in DB
+        const savedAddress = localStorage.getItem("blue_naz_saved_address");
+        if (savedAddress) {
+          try {
+            initialData = JSON.parse(savedAddress);
+          } catch (e) {
+            // ignore parse error
+          }
+        } else if (profile) {
+          // 3. Fallback to just filling basic profile info
+          initialData = {
+            ...formData,
+            firstName: profile.first_name || "",
+            lastName: profile.last_name || "",
+            email: profile.email || session.user.email || "",
+            phone: profile.phone || ""
+          };
+        }
+      }
+
+      if (initialData) {
+        setFormData(prev => ({ ...prev, ...initialData }));
+        if (initialData.country) {
+          const cCode = Country.getAllCountries().find(c => c.name === initialData.country)?.isoCode;
           if (cCode) {
             setSelectedCountryCode(cCode);
-            if (parsed.state) {
-              const sCode = State.getStatesOfCountry(cCode).find(s => s.name === parsed.state)?.isoCode;
+            if (initialData.state) {
+              const sCode = State.getStatesOfCountry(cCode).find(s => s.name === initialData.state)?.isoCode;
               if (sCode) setSelectedStateCode(sCode);
             }
           }
         }
-      } catch (e) {
-        // ignore parse error
       }
-    }
+    };
+    
+    initCheckout();
 
     if (!isLoading && items.length === 0 && step === 1) {
       router.push("/cart");
     }
-  }, [items, isLoading, router, step, supabase.auth]);
+  }, [items, isLoading, router, step, supabase]);
 
   // Check pincode when length is 6
   useEffect(() => {
