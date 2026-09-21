@@ -110,14 +110,14 @@ export default function CartPage() {
                       <div className="flex items-center border border-gray-300 dark:border-primary/30 rounded overflow-hidden">
                         <button 
                           onClick={() => updateQuantity(item.id, Math.max(1, item.quantity - 1))}
-                          className="px-3 py-1 bg-gray-50 dark:bg-transparent hover:bg-gray-100 dark:hover:bg-primary/10 text-gray-600 dark:text-white/70"
+                          className="px-4 py-2 bg-gray-50 dark:bg-transparent hover:bg-gray-100 dark:hover:bg-primary/10 text-gray-600 dark:text-white/70"
                         >
                           -
                         </button>
-                        <span className="px-4 py-1 text-sm font-medium border-x border-gray-300 dark:border-primary/30">{item.quantity}</span>
+                        <span className="px-5 py-2 text-sm font-medium border-x border-gray-300 dark:border-primary/30">{item.quantity}</span>
                         <button 
                           onClick={() => updateQuantity(item.id, item.quantity + 1)}
-                          className="px-3 py-1 bg-gray-50 dark:bg-transparent hover:bg-gray-100 dark:hover:bg-primary/10 text-gray-600 dark:text-white/70"
+                          className="px-4 py-2 bg-gray-50 dark:bg-transparent hover:bg-gray-100 dark:hover:bg-primary/10 text-gray-600 dark:text-white/70"
                         >
                           +
                         </button>
@@ -193,7 +193,7 @@ export default function CartPage() {
 
               <Link 
                 href="/checkout"
-                className="block w-full bg-primary text-primary-foreground text-center py-3 rounded-lg font-bold hover:opacity-90 transition-opacity"
+                className="block w-full bg-primary text-primary-foreground text-center py-4 rounded-lg font-bold hover:opacity-90 transition-opacity text-base shadow-sm"
               >
                 Proceed to Checkout
               </Link>

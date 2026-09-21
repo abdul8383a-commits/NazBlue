@@ -147,15 +147,15 @@ export default function ProductOptions({
             <button 
               onClick={() => setQuantity(Math.max(1, quantity - 1))}
               disabled={isOutOfStock}
-              className="px-3 py-2 text-gray-600 dark:text-white/70 hover:bg-gray-100 dark:hover:bg-primary/10 disabled:opacity-50"
+              className="px-4 py-3 md:px-3 md:py-2 text-lg md:text-base text-gray-600 dark:text-white/70 hover:bg-gray-100 dark:hover:bg-primary/10 disabled:opacity-50"
             >
               -
             </button>
-            <span className="px-4 py-2 text-gray-900 dark:text-white font-medium">{quantity}</span>
+            <span className="px-5 py-3 md:px-4 md:py-2 text-gray-900 dark:text-white font-medium">{quantity}</span>
             <button 
               onClick={() => setQuantity(Math.min(stock, quantity + 1))}
               disabled={isOutOfStock || quantity >= stock}
-              className="px-3 py-2 text-gray-600 dark:text-white/70 hover:bg-gray-100 dark:hover:bg-primary/10 disabled:opacity-50"
+              className="px-4 py-3 md:px-3 md:py-2 text-lg md:text-base text-gray-600 dark:text-white/70 hover:bg-gray-100 dark:hover:bg-primary/10 disabled:opacity-50"
             >
               +
             </button>
@@ -168,14 +168,14 @@ export default function ProductOptions({
         <button 
           onClick={handleAddToCart}
           disabled={isOutOfStock || !selectedVariant}
-          className="flex-1 bg-white dark:bg-transparent border-2 border-primary text-primary dark:text-white py-3 rounded-lg font-semibold hover:bg-gray-50 dark:hover:bg-primary/10 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+          className="w-full sm:flex-1 bg-white dark:bg-transparent border border-primary text-primary dark:text-white py-3.5 md:py-3 rounded-lg font-semibold hover:bg-gray-50 dark:hover:bg-primary/10 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
         >
           {isOutOfStock ? "Out of Stock" : "Add to Cart"}
         </button>
         <button 
           onClick={handleBuyNow}
           disabled={isOutOfStock || !selectedVariant}
-          className="flex-1 bg-primary text-white dark:text-primary-foreground py-3 rounded-lg font-semibold hover:opacity-90 disabled:opacity-50 disabled:cursor-not-allowed transition-opacity"
+          className="w-full sm:flex-1 bg-primary text-white dark:text-primary-foreground py-3.5 md:py-3 rounded-lg font-semibold hover:opacity-90 disabled:opacity-50 disabled:cursor-not-allowed transition-opacity shadow-sm"
         >
           Buy Now
         </button>

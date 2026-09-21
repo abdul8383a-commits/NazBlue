@@ -43,7 +43,7 @@ export default async function Home() {
       {/* Hero Section */}
       <div className="mb-20 md:mb-28">
         <div className="max-w-4xl mb-12 md:mb-16">
-          <h1 className="text-4xl sm:text-5xl md:text-6xl lg:text-[5.5rem] leading-[1.1] md:leading-[1.1] font-serif italic text-primary dark:text-white mb-6 md:mb-10 tracking-tight break-words hyphens-auto">
+          <h1 className="text-3xl sm:text-4xl md:text-6xl lg:text-[5.5rem] leading-[1.1] md:leading-[1.1] font-serif italic text-primary dark:text-white mb-6 md:mb-10 tracking-tight break-words hyphens-none">
             Clothes made to be worn until they soften.
           </h1>
           <p className="text-sm sm:text-base md:text-lg text-primary/70 dark:text-white/70 max-w-xl leading-relaxed break-words">
@@ -62,7 +62,7 @@ export default async function Home() {
         </div>
         
         {/* Editorial Hero Image */}
-        <div className="w-full relative h-[50vh] md:h-[75vh] bg-gray-100 dark:bg-white/5 rounded-2xl overflow-hidden shadow-sm">
+        <div className="w-full relative h-[40vh] md:h-[75vh] min-h-[300px] bg-gray-100 dark:bg-white/5 rounded-2xl overflow-hidden shadow-sm">
           <Image
             src="/hero.jpg"
             alt="BLUE ناز Collection"
@@ -81,7 +81,7 @@ export default async function Home() {
       </div>
 
       {/* Product Grid */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-x-8 gap-y-16">
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-x-8 gap-y-10 sm:gap-y-16">
         {displayProducts.map((product) => {
           const imageSrc = product.images?.[0] || 'https://via.placeholder.com/600x600?text=No+Image';
           return (
@@ -95,9 +95,9 @@ export default async function Home() {
                   className="object-cover group-hover:scale-105 transition-transform duration-700 ease-out"
                 />
               </div>
-              <div className="flex justify-between items-start text-sm text-primary">
-                <h3 className="font-medium pr-4">{product.name}</h3>
-                <span className="font-medium whitespace-nowrap">
+              <div className="flex justify-between items-start text-sm md:text-base text-primary">
+                <h3 className="font-medium pr-4 line-clamp-1">{product.name}</h3>
+                <span className="font-semibold whitespace-nowrap">
                   ${product.discount_price || product.base_price}
                 </span>
               </div>

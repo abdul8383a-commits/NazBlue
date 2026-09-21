@@ -37,7 +37,7 @@ export default function MobileMenu({ isLoggedIn }: MobileMenuProps) {
       </button>
 
       {isOpen && (
-        <div className="fixed inset-0 top-[112px] bg-[#E8E7E5]/95 dark:bg-[#163A7A]/95 backdrop-blur-md z-40 flex flex-col px-6 py-8 border-t border-primary/10 overflow-y-auto">
+        <div className="fixed inset-0 top-[80px] md:top-[112px] bg-[#E8E7E5]/95 dark:bg-[#163A7A]/95 backdrop-blur-md z-40 flex flex-col px-6 py-8 border-t border-primary/10 overflow-y-auto">
           <div className="flex flex-col space-y-6 text-xl font-medium tracking-wide text-primary dark:text-white">
             <Link href="/men" onClick={closeMenu} className="hover:opacity-70 transition-opacity">Men</Link>
             <Link href="/women" onClick={closeMenu} className="hover:opacity-70 transition-opacity">Women</Link>

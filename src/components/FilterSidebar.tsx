@@ -30,17 +30,17 @@ export default function FilterSidebar() {
   return (
     <div className="w-full space-y-8">
       {/* Categories */}
-      <div>
-        <h3 className="text-xs uppercase tracking-widest font-semibold mb-6 text-primary dark:text-white">Category</h3>
-        <ul className="space-y-4">
+      <div className="mb-8 md:mb-0">
+        <h3 className="hidden md:block text-xs uppercase tracking-widest font-semibold mb-6 text-primary dark:text-white">Category</h3>
+        <ul className="flex overflow-x-auto md:flex-col md:space-y-4 space-x-3 md:space-x-0 pb-4 md:pb-0 [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none]">
           {['', 'T-Shirts', 'Jeans', 'Dresses', 'Jackets'].map((cat) => (
-            <li key={cat}>
+            <li key={cat} className="flex-shrink-0">
               <button
                 onClick={() => handleFilterChange("category", cat)}
-                className={`text-sm hover:text-primary dark:hover:text-white transition-colors tracking-wide ${
+                className={`text-sm hover:text-primary dark:hover:text-white transition-colors tracking-wide md:px-0 md:py-0 px-5 py-2.5 rounded-full md:rounded-none border md:border-transparent ${
                   currentCategory === cat || (!currentCategory && cat === '') 
-                    ? "font-medium text-primary dark:text-white underline underline-offset-4" 
-                    : "text-primary/80 dark:text-white/80"
+                    ? "font-medium text-white md:text-primary dark:text-primary-foreground md:dark:text-white bg-primary md:bg-transparent md:underline md:underline-offset-4 border-primary md:border-transparent" 
+                    : "text-primary/80 dark:text-white/80 border-gray-200 dark:border-white/20 bg-gray-50 dark:bg-white/5 md:bg-transparent md:border-transparent"
                 }`}
               >
                 {cat === '' ? 'All Categories' : cat}

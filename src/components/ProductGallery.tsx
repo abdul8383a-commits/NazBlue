@@ -18,7 +18,7 @@ export default function ProductGallery({ images }: { images: string[] }) {
     <div className="flex flex-col-reverse md:flex-row gap-4">
       {/* Thumbnails */}
       {images.length > 1 && (
-        <div className="flex md:flex-col gap-2 overflow-x-auto md:w-20 flex-shrink-0 scrollbar-hide">
+        <div className="flex md:flex-col gap-2 overflow-x-auto md:w-20 flex-shrink-0 [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none]">
           {images.map((img, idx) => (
             <button
               key={idx}

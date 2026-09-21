@@ -16,10 +16,10 @@ export default async function WomenCatalog({
   const products = await fetchProducts({ gender: 'women', categorySlug: category, sort });
 
   return (
-    <div className="max-w-7xl mx-auto px-6 lg:px-12 py-16 min-h-[70vh]">
-      <div className="mb-12 border-b border-primary/10 pb-6">
-        <h1 className="text-4xl font-serif tracking-tight text-primary">Women</h1>
-        <p className="mt-4 text-primary/70 max-w-xl">Timeless silhouettes designed to get better with wear.</p>
+    <div className="max-w-7xl mx-auto px-6 lg:px-12 py-10 md:py-16 min-h-[70vh]">
+      <div className="mb-8 md:mb-12 border-b border-primary/10 pb-6">
+        <h1 className="text-3xl md:text-4xl font-serif tracking-tight text-primary dark:text-white">Women</h1>
+        <p className="mt-3 md:mt-4 text-primary/70 dark:text-white/70 max-w-xl text-sm md:text-base">Timeless silhouettes designed to get better with wear.</p>
       </div>
       <div className="flex flex-col md:flex-row gap-12">
         <aside className="w-full md:w-56 flex-shrink-0">
