@@ -14,11 +14,11 @@ export default async function AdminOrderDetailPage({ params }: { params: Promise
   const supabase = await createClient();
 
   // Fetch the order with its items, variants, and products
-  const { data: order } = await supabase
+  const { data: order, error } = await supabase
     .from("orders")
     .select(`
       *,
-      users(name, email, phone),
+      users(name, phone),
       order_items(
         *,
         product_variants(
@@ -35,7 +35,12 @@ export default async function AdminOrderDetailPage({ params }: { params: Promise
     .eq("id", orderId)
     .single();
 
+  if (error) {
+    console.error("Error fetching order:", error);
+  }
+
   if (!order) {
+    console.error("Order not found. orderId:", orderId, "resolvedParams:", resolvedParams);
     notFound();
   }
 
