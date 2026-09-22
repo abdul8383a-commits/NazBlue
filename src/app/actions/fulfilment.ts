@@ -127,12 +127,14 @@ export async function sendOrderToShiprocket(orderId: string, packageDetails: { w
     // If it's a network timeout (fetch throws before reading response), the order MIGHT exist on Shiprocket,
     // so we shouldn't blindly unlock to prevent duplicates.
     const errorMessage = err.message || "";
-    if (errorMessage.includes("Shiprocket Order Creation Failed")) {
+    if (errorMessage.includes("Shiprocket Order Creation Failed") || 
+        errorMessage.includes("Shiprocket Authentication Expired") || 
+        errorMessage.includes("Shiprocket Rate Limit Exceeded")) {
       await unlockOrder();
       return { success: false, error: errorMessage };
     } else {
-      // Network drop or timeout. Do NOT unlock.
-      return { success: false, error: "Network error during Shiprocket API call. The order status is locked as 'creating' because the order may have been created on Shiprocket. Please verify manually." };
+      // Network drop, timeout, unknown 5xx server error, or malformed success. Do NOT unlock.
+      return { success: false, error: "Network or Server error during Shiprocket API call. The order status is locked as 'creating' because the order may have been created on Shiprocket. Please verify manually." };
     }
   }
 
@@ -196,6 +198,22 @@ export async function assignCourierAWB(orderId: string, courierId: string) {
   if (!order || !order.shiprocket_shipment_id) return { success: false, error: "Shipment ID not found on order." };
   if (order.awb_code) return { success: false, error: "AWB already assigned." };
 
+  // Atomic lock for AWB
+  const { data: lockData, error: lockError } = await supabase
+    .from("orders")
+    .update({ awb_code: "generating" })
+    .eq("id", orderId)
+    .is("awb_code", null)
+    .select();
+
+  if (lockError || !lockData || lockData.length === 0) {
+    return { success: false, error: "Concurrency lock failed. AWB is already assigned or currently generating." };
+  }
+
+  const unlockAWB = async () => {
+    await supabase.from("orders").update({ awb_code: null }).eq("id", orderId).eq("awb_code", "generating");
+  };
+
   try {
     const response = await generateAWB(order.shiprocket_shipment_id, courierId);
     if (response.awb_assign_status === 1 && response.response?.data?.awb_code) {
@@ -207,15 +225,28 @@ export async function assignCourierAWB(orderId: string, courierId: string) {
         })
         .eq("id", orderId);
       
-      if (updateError) return { success: false, error: "AWB assigned but failed to save to database." };
+      if (updateError) {
+         console.error("Failed to save AWB to database.", updateError);
+         return { success: false, error: "AWB assigned on Shiprocket but failed to save to database. DO NOT retry. Verify on dashboard." };
+      }
       
       revalidatePath(`/admin/orders/${orderId}`);
       return { success: true };
     } else {
+      await unlockAWB();
       return { success: false, error: "Shiprocket did not return an AWB." };
     }
   } catch (err: any) {
-    return { success: false, error: err.message };
+    const errorMessage = err.message || "";
+    if (errorMessage.includes("AWB Generation Failed") || 
+        errorMessage.includes("Shiprocket Authentication Expired") || 
+        errorMessage.includes("Shiprocket Rate Limit Exceeded")) {
+      await unlockAWB();
+      return { success: false, error: errorMessage };
+    } else {
+      // Network drop, timeout, unknown 5xx
+      return { success: false, error: "Network or Server error during AWB generation. Status locked. Verify on Shiprocket dashboard before manual intervention." };
+    }
   }
 }
 
@@ -228,17 +259,42 @@ export async function requestOrderPickup(orderId: string) {
   if (!order.awb_code) return { success: false, error: "Cannot schedule pickup before assigning AWB." };
   if (order.pickup_scheduled) return { success: false, error: "Pickup is already scheduled." };
 
+  // Atomic lock for Pickup
+  const { data: lockData, error: lockError } = await supabase
+    .from("orders")
+    .update({ pickup_scheduled: true })
+    .eq("id", orderId)
+    .eq("pickup_scheduled", false)
+    .select();
+
+  if (lockError || !lockData || lockData.length === 0) {
+    return { success: false, error: "Concurrency lock failed. Pickup is already scheduled or currently requesting." };
+  }
+
+  const unlockPickup = async () => {
+    await supabase.from("orders").update({ pickup_scheduled: false }).eq("id", orderId).eq("pickup_scheduled", true);
+  };
+
   try {
     const response = await requestPickup(order.shiprocket_shipment_id);
     if (response.pickup_status === 1) {
-       await supabase.from("orders").update({ pickup_scheduled: true }).eq("id", orderId);
        revalidatePath(`/admin/orders/${orderId}`);
        return { success: true };
     } else {
+       await unlockPickup();
        return { success: false, error: "Shiprocket rejected pickup request." };
     }
   } catch (err: any) {
-    return { success: false, error: err.message };
+    const errorMessage = err.message || "";
+    if (errorMessage.includes("Pickup Request Failed") || 
+        errorMessage.includes("Shiprocket Authentication Expired") || 
+        errorMessage.includes("Shiprocket Rate Limit Exceeded")) {
+      await unlockPickup();
+      return { success: false, error: errorMessage };
+    } else {
+      // Keep it as true in DB to prevent blind retries on timeout
+      return { success: false, error: "Network or Server error during Pickup request. Status locked. Verify on Shiprocket dashboard before manual intervention." };
+    }
   }
 }
 

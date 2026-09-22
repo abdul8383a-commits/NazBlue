@@ -1,7 +1,7 @@
 const SHIPROCKET_BASE_URL = "https://apiv2.shiprocket.in";
 
-let shiprocketToken: string | null = null;
-let tokenExpiry: number | null = null;
+export let shiprocketToken: string | null = null;
+export let tokenExpiry: number | null = null;
 let tokenPromise: Promise<string> | null = null;
 
 // Mock Mode Helper - Explicitly safe
@@ -130,7 +130,21 @@ export async function createShiprocketOrder(orderDetails: any) {
 
   if (!response.ok) {
     const errorText = await response.text();
-    throw new Error(`Shiprocket Order Creation Failed: HTTP ${response.status} - ${errorText}`);
+    if (response.status === 401) {
+      shiprocketToken = null;
+      tokenExpiry = null;
+      throw new Error(`Shiprocket Authentication Expired: HTTP 401. Please try again.`);
+    }
+    if (response.status === 429) {
+      throw new Error(`Shiprocket Rate Limit Exceeded: HTTP 429. Please try again later.`);
+    }
+    if (response.status >= 400 && response.status < 500) {
+      throw new Error(`Shiprocket Order Creation Failed: HTTP ${response.status} - ${errorText}`);
+    }
+    if (response.status >= 500) {
+      throw new Error(`Shiprocket Server Error (Unknown Outcome): HTTP ${response.status} - ${errorText}`);
+    }
+    throw new Error(`Shiprocket Error: HTTP ${response.status} - ${errorText}`);
   }
 
   const data = await response.json();
@@ -171,6 +185,10 @@ export async function generateAWB(shipmentId: string, courierId: string) {
 
   if (!response.ok) {
     const errorText = await response.text();
+    if (response.status === 401) {
+      shiprocketToken = null;
+      tokenExpiry = null;
+    }
     throw new Error(`AWB Generation Failed: HTTP ${response.status} - ${errorText}`);
   }
 
@@ -206,6 +224,10 @@ export async function requestPickup(shipmentId: string) {
 
   if (!response.ok) {
     const errorText = await response.text();
+    if (response.status === 401) {
+      shiprocketToken = null;
+      tokenExpiry = null;
+    }
     throw new Error(`Pickup Request Failed: HTTP ${response.status} - ${errorText}`);
   }
 
@@ -238,6 +260,10 @@ export async function generateShippingLabel(shipmentId: string) {
 
   if (!response.ok) {
     const errorText = await response.text();
+    if (response.status === 401) {
+      shiprocketToken = null;
+      tokenExpiry = null;
+    }
     throw new Error(`Label Generation Failed: HTTP ${response.status} - ${errorText}`);
   }
 
@@ -270,6 +296,10 @@ export async function generateInvoice(orderIds: string[]) {
 
   if (!response.ok) {
     const errorText = await response.text();
+    if (response.status === 401) {
+      shiprocketToken = null;
+      tokenExpiry = null;
+    }
     throw new Error(`Invoice Generation Failed: HTTP ${response.status} - ${errorText}`);
   }
 
