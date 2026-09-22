@@ -336,6 +336,26 @@ export async function getOrderInvoice(orderId: string) {
   }
 }
 
+export async function getTrackingInfo(orderId: string) {
+  const supabase = await createClient();
+  await verifyAdmin(supabase);
+
+  const { data: order } = await supabase.from("orders").select("shiprocket_shipment_id").eq("id", orderId).single();
+  if (!order || !order.shiprocket_shipment_id) return { success: false, error: "Shipment ID missing." };
+
+  try {
+    const { trackOrder } = await import("@/lib/shiprocket");
+    const response = await trackOrder(order.shiprocket_shipment_id);
+    if (response && response.tracking_data) {
+      return { success: true, tracking: response.tracking_data };
+    } else {
+      return { success: false, error: "Shiprocket did not return tracking info." };
+    }
+  } catch (err: any) {
+    return { success: false, error: err.message };
+  }
+}
+
 export async function testShiprocketConnection() {
   const supabase = await createClient();
   await verifyAdmin(supabase);

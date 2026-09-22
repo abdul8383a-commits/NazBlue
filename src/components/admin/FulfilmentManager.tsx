@@ -8,7 +8,8 @@ import {
   assignCourierAWB, 
   requestOrderPickup, 
   getOrderLabel, 
-  getOrderInvoice 
+  getOrderInvoice,
+  getTrackingInfo
 } from "@/app/actions/fulfilment";
 
 export default function FulfilmentManager({ order }: { order: any }) {
@@ -23,8 +24,9 @@ export default function FulfilmentManager({ order }: { order: any }) {
 
   const [couriers, setCouriers] = useState<any[]>([]);
   const [selectedCourier, setSelectedCourier] = useState<string>("");
+  const [trackingData, setTrackingData] = useState<any>(null);
 
-  const clearMessages = () => { setError(""); setSuccess(""); };
+  const clearMessages = () => { setError(""); setSuccess(""); setTrackingData(null); };
 
   const handleCreateShipment = async () => {
     clearMessages();
@@ -105,6 +107,18 @@ export default function FulfilmentManager({ order }: { order: any }) {
       window.open(res.url, "_blank");
     } else {
       setError(res.error || "Failed to get invoice.");
+    }
+    setLoading(false);
+  };
+
+  const handleTrackShipment = async () => {
+    clearMessages();
+    setLoading(true);
+    const res = await getTrackingInfo(order.id);
+    if (res.success && res.tracking) {
+      setTrackingData(res.tracking);
+    } else {
+      setError(res.error || "Failed to fetch tracking info.");
     }
     setLoading(false);
   };
@@ -239,10 +253,24 @@ export default function FulfilmentManager({ order }: { order: any }) {
           </div>
           
           {isPickupScheduled && (
-            <p className="text-sm text-green-600 font-bold mt-2 flex items-center">
-              <CheckCircle2 className="w-4 h-4 mr-1" />
-              Pickup has been scheduled successfully.
-            </p>
+            <div className="mt-4 border-t pt-4">
+              <div className="flex items-center justify-between mb-2">
+                <p className="text-sm text-green-600 font-bold flex items-center">
+                  <CheckCircle2 className="w-4 h-4 mr-1" />
+                  Pickup has been scheduled successfully.
+                </p>
+                <button onClick={handleTrackShipment} disabled={loading} className="text-sm text-primary font-bold hover:underline disabled:opacity-50">
+                  {loading && !trackingData ? "Tracking..." : "Track Shipment"}
+                </button>
+              </div>
+              
+              {trackingData && (
+                <div className="bg-gray-50 p-3 rounded text-sm border mt-2">
+                  <p className="font-bold text-gray-900 mb-1">Status: {trackingData.shipment_track?.[0]?.current_status || "Unknown"}</p>
+                  <p className="text-gray-600">Expected Delivery: {trackingData.shipment_track?.[0]?.expected_date || "N/A"}</p>
+                </div>
+              )}
+            </div>
           )}
         </div>
       )}
