@@ -2,6 +2,7 @@ const SHIPROCKET_BASE_URL = "https://apiv2.shiprocket.in";
 
 let shiprocketToken: string | null = null;
 let tokenExpiry: number | null = null;
+let tokenPromise: Promise<string> | null = null;
 
 // Mock Mode Helper - Explicitly safe
 const isMockMode = () => {
@@ -12,30 +13,65 @@ const isMockMode = () => {
   return !process.env.SHIPROCKET_API_EMAIL || process.env.SHIPROCKET_API_EMAIL.includes("placeholder") || process.env.SHIPROCKET_MODE === 'mock';
 };
 
-export async function getShiprocketToken() {
+// Safe fetch with timeout
+async function fetchWithTimeout(url: string, options: RequestInit, timeoutMs: number = 10000) {
+  const controller = new AbortController();
+  const id = setTimeout(() => controller.abort(), timeoutMs);
+  try {
+    const response = await fetch(url, { ...options, signal: controller.signal });
+    clearTimeout(id);
+    return response;
+  } catch (error: any) {
+    clearTimeout(id);
+    // Explicitly throw a specific error type if it's a network/abort issue
+    if (error.name === 'AbortError' || error.name === 'FetchError' || error.message.includes('fetch failed')) {
+      throw new Error(`NETWORK_TIMEOUT: ${error.message}`);
+    }
+    throw error;
+  }
+}
+
+export async function getShiprocketToken(): Promise<string> {
   if (isMockMode()) return "mock-token-12345";
 
   if (shiprocketToken && tokenExpiry && Date.now() < tokenExpiry) {
-    return shiprocketToken;
+    return shiprocketToken as string;
+  }
+  // Prevent token fetch storms
+  if (tokenPromise) {
+    return tokenPromise;
   }
 
-  const response = await fetch(`${SHIPROCKET_BASE_URL}/v1/external/auth/login`, {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({
-      email: process.env.SHIPROCKET_API_EMAIL,
-      password: process.env.SHIPROCKET_API_PASSWORD,
-    }),
-  });
+  tokenPromise = (async () => {
+    try {
+      const response = await fetchWithTimeout(`${SHIPROCKET_BASE_URL}/v1/external/auth/login`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          email: process.env.SHIPROCKET_API_EMAIL,
+          password: process.env.SHIPROCKET_API_PASSWORD,
+        }),
+      }, 15000); // 15s timeout for auth
 
-  if (!response.ok) {
-    throw new Error("Failed to authenticate with Shiprocket");
-  }
+      if (!response.ok) {
+        throw new Error(`Failed to authenticate with Shiprocket: ${response.status}`);
+      }
 
-  const data = await response.json();
-  shiprocketToken = data.token;
-  tokenExpiry = Date.now() + 24 * 60 * 60 * 1000; 
-  return shiprocketToken;
+      const data = await response.json();
+      if (!data || !data.token) {
+        throw new Error("Invalid token response from Shiprocket.");
+      }
+
+      shiprocketToken = data.token;
+      // Shiprocket tokens last ~10 days typically, we play it safe with 24 hours.
+      tokenExpiry = Date.now() + 24 * 60 * 60 * 1000;
+      return shiprocketToken as string;
+    } finally {
+      tokenPromise = null;
+    }
+  })();
+
+  return tokenPromise as Promise<string>;
 }
 
 export async function checkServiceability(pickupPincode: string, deliveryPincode: string, weight: number, cod: number = 0) {
@@ -51,7 +87,7 @@ export async function checkServiceability(pickupPincode: string, deliveryPincode
 
   try {
     const token = await getShiprocketToken();
-    const response = await fetch(
+    const response = await fetchWithTimeout(
       `${SHIPROCKET_BASE_URL}/v1/external/courier/serviceability/?pickup_postcode=${pickupPincode}&delivery_postcode=${deliveryPincode}&weight=${weight}&cod=${cod}`,
       {
         method: "GET",
@@ -59,12 +95,17 @@ export async function checkServiceability(pickupPincode: string, deliveryPincode
       }
     );
 
-    if (!response.ok) return null;
+    if (!response.ok) {
+       // Explicitly differentiate between NO couriers (200 with empty array) and a real error (400)
+       throw new Error(`Serviceability API Error: ${response.status}`);
+    }
     const data = await response.json();
     return data.data; 
-  } catch (e) {
-    console.error("Serviceability check failed:", e);
-    return null;
+  } catch (e: any) {
+    if (e.message.includes('NETWORK_TIMEOUT')) {
+      throw new Error(`Serviceability failed: Network issue. Try again.`);
+    }
+    throw e; // Pass through to be logged by caller
   }
 }
 
@@ -78,21 +119,26 @@ export async function createShiprocketOrder(orderDetails: any) {
   }
 
   const token = await getShiprocketToken();
-  const response = await fetch(`${SHIPROCKET_BASE_URL}/v1/external/orders/create/ad-hoc`, {
+  const response = await fetchWithTimeout(`${SHIPROCKET_BASE_URL}/v1/external/orders/create/ad-hoc`, {
     method: "POST",
     headers: { 
       "Content-Type": "application/json",
       Authorization: `Bearer ${token}` 
     },
     body: JSON.stringify(orderDetails),
-  });
+  }, 20000); // Allow 20 seconds for order creation
 
   if (!response.ok) {
     const errorText = await response.text();
-    throw new Error(`Shiprocket Order Creation Failed: ${errorText}`);
+    throw new Error(`Shiprocket Order Creation Failed: HTTP ${response.status} - ${errorText}`);
   }
 
   const data = await response.json();
+  
+  if (!data || !data.order_id || !data.shipment_id) {
+     throw new Error(`Shiprocket returned an invalid success response missing order_id/shipment_id: ${JSON.stringify(data)}`);
+  }
+  
   return data;
 }
 
@@ -111,7 +157,7 @@ export async function generateAWB(shipmentId: string, courierId: string) {
   }
 
   const token = await getShiprocketToken();
-  const response = await fetch(`${SHIPROCKET_BASE_URL}/v1/external/courier/assign/awb`, {
+  const response = await fetchWithTimeout(`${SHIPROCKET_BASE_URL}/v1/external/courier/assign/awb`, {
     method: "POST",
     headers: { 
       "Content-Type": "application/json",
@@ -121,14 +167,18 @@ export async function generateAWB(shipmentId: string, courierId: string) {
       shipment_id: shipmentId,
       courier_id: courierId
     }),
-  });
+  }, 15000);
 
   if (!response.ok) {
     const errorText = await response.text();
-    throw new Error(`AWB Generation Failed: ${errorText}`);
+    throw new Error(`AWB Generation Failed: HTTP ${response.status} - ${errorText}`);
   }
 
-  return await response.json();
+  const data = await response.json();
+  if (!data || data.awb_assign_status !== 1 || !data.response?.data?.awb_code) {
+     throw new Error(`Shiprocket returned invalid AWB response: ${JSON.stringify(data)}`);
+  }
+  return data;
 }
 
 export async function requestPickup(shipmentId: string) {
@@ -143,7 +193,7 @@ export async function requestPickup(shipmentId: string) {
   }
 
   const token = await getShiprocketToken();
-  const response = await fetch(`${SHIPROCKET_BASE_URL}/v1/external/courier/generate/pickup`, {
+  const response = await fetchWithTimeout(`${SHIPROCKET_BASE_URL}/v1/external/courier/generate/pickup`, {
     method: "POST",
     headers: { 
       "Content-Type": "application/json",
@@ -152,14 +202,18 @@ export async function requestPickup(shipmentId: string) {
     body: JSON.stringify({
       shipment_id: [shipmentId]
     }),
-  });
+  }, 15000);
 
   if (!response.ok) {
     const errorText = await response.text();
-    throw new Error(`Pickup Request Failed: ${errorText}`);
+    throw new Error(`Pickup Request Failed: HTTP ${response.status} - ${errorText}`);
   }
 
-  return await response.json();
+  const data = await response.json();
+  if (!data || data.pickup_status !== 1) {
+     throw new Error(`Shiprocket rejected pickup request or returned invalid response: ${JSON.stringify(data)}`);
+  }
+  return data;
 }
 
 export async function generateShippingLabel(shipmentId: string) {
@@ -171,7 +225,7 @@ export async function generateShippingLabel(shipmentId: string) {
   }
 
   const token = await getShiprocketToken();
-  const response = await fetch(`${SHIPROCKET_BASE_URL}/v1/external/courier/generate/label`, {
+  const response = await fetchWithTimeout(`${SHIPROCKET_BASE_URL}/v1/external/courier/generate/label`, {
     method: "POST",
     headers: { 
       "Content-Type": "application/json",
@@ -180,14 +234,18 @@ export async function generateShippingLabel(shipmentId: string) {
     body: JSON.stringify({
       shipment_id: [shipmentId]
     }),
-  });
+  }, 15000);
 
   if (!response.ok) {
     const errorText = await response.text();
-    throw new Error(`Label Generation Failed: ${errorText}`);
+    throw new Error(`Label Generation Failed: HTTP ${response.status} - ${errorText}`);
   }
 
-  return await response.json();
+  const data = await response.json();
+  if (!data || data.label_created !== 1 || !data.label_url) {
+     throw new Error(`Shiprocket returned invalid label response: ${JSON.stringify(data)}`);
+  }
+  return data;
 }
 
 export async function generateInvoice(orderIds: string[]) {
@@ -199,7 +257,7 @@ export async function generateInvoice(orderIds: string[]) {
   }
 
   const token = await getShiprocketToken();
-  const response = await fetch(`${SHIPROCKET_BASE_URL}/v1/external/orders/print/invoice`, {
+  const response = await fetchWithTimeout(`${SHIPROCKET_BASE_URL}/v1/external/orders/print/invoice`, {
     method: "POST",
     headers: { 
       "Content-Type": "application/json",
@@ -208,14 +266,18 @@ export async function generateInvoice(orderIds: string[]) {
     body: JSON.stringify({
       ids: orderIds
     }),
-  });
+  }, 15000);
 
   if (!response.ok) {
     const errorText = await response.text();
-    throw new Error(`Invoice Generation Failed: ${errorText}`);
+    throw new Error(`Invoice Generation Failed: HTTP ${response.status} - ${errorText}`);
   }
 
-  return await response.json();
+  const data = await response.json();
+  if (!data || !data.is_invoice_created || !data.invoice_url) {
+     throw new Error(`Shiprocket returned invalid invoice response: ${JSON.stringify(data)}`);
+  }
+  return data;
 }
 
 export async function trackOrder(shipmentId: string) {
@@ -231,10 +293,10 @@ export async function trackOrder(shipmentId: string) {
 
   try {
     const token = await getShiprocketToken();
-    const response = await fetch(`${SHIPROCKET_BASE_URL}/v1/external/courier/track/shipment/${shipmentId}`, {
+    const response = await fetchWithTimeout(`${SHIPROCKET_BASE_URL}/v1/external/courier/track/shipment/${shipmentId}`, {
       method: "GET",
       headers: { Authorization: `Bearer ${token}` },
-    });
+    }, 15000);
 
     if (!response.ok) return null;
     const data = await response.json();

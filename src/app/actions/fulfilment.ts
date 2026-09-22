@@ -38,16 +38,22 @@ export async function sendOrderToShiprocket(orderId: string, packageDetails: { w
     .update({ shiprocket_status: 'creating' })
     .eq("id", orderId)
     .is("shiprocket_order_id", null)
-    .neq("shiprocket_status", 'creating')
+    .or("shiprocket_status.is.null,shiprocket_status.neq.creating")
     .select();
 
   if (lockError || !lockData || lockData.length === 0) {
     return { success: false, error: "Concurrency lock failed. Another process is handling this order." };
   }
 
+  // Helper to safely unlock if validation fails BEFORE Shiprocket API is called
+  const unlockOrder = async () => {
+    await supabase.from("orders").update({ shiprocket_status: null }).eq("id", orderId).eq("shiprocket_status", 'creating');
+  };
+
   // 3. Pickup Location Validation
   const pickupLocation = process.env.SHIPROCKET_PICKUP_LOCATION;
   if (!pickupLocation) {
+    await unlockOrder();
     return { success: false, error: "No valid Shiprocket pickup address is configured on the server. Please configure SHIPROCKET_PICKUP_LOCATION." };
   }
 
@@ -58,6 +64,7 @@ export async function sendOrderToShiprocket(orderId: string, packageDetails: { w
   }
 
   if (!address.pincode || !address.firstName || !address.phone || !address.address || !address.city || !address.state) {
+    await unlockOrder();
     return { success: false, error: "Order is missing critical shipping address fields (Pincode, Name, Phone, Address, City, State)." };
   }
 
@@ -66,6 +73,7 @@ export async function sendOrderToShiprocket(orderId: string, packageDetails: { w
   try {
     const serviceability = await checkServiceability("110030", address.pincode, packageDetails.weight, order.payment_status === "paid" ? 0 : 1);
     if (!serviceability || !serviceability.available_courier_companies || serviceability.available_courier_companies.length === 0) {
+       await unlockOrder();
        return { success: false, error: "Delivery pincode is currently not serviceable by any courier." };
     }
   } catch(err) {
@@ -110,35 +118,47 @@ export async function sendOrderToShiprocket(orderId: string, packageDetails: { w
   };
 
   // 7. Call API
+  let response;
   try {
-    const response = await createShiprocketOrder(srOrderDetails);
-    
-    // 8. Persist Response
-    const { error: updateError } = await supabase
-      .from("orders")
-      .update({
-        shiprocket_order_id: response.order_id?.toString(),
-        shiprocket_shipment_id: response.shipment_id?.toString(),
-        shiprocket_status: response.status,
-        package_weight: packageDetails.weight,
-        package_length: packageDetails.length,
-        package_width: packageDetails.width,
-        package_height: packageDetails.height
-      })
-      .eq("id", orderId);
-
-    if (updateError) {
-      console.error("Failed to persist shiprocket IDs. Data may be desynced.", updateError);
-      return { success: false, error: "Shiprocket order created, but failed to save to database. Avoid retrying." };
-    }
-
-    revalidatePath(`/admin/orders/${orderId}`);
-    return { success: true };
+    response = await createShiprocketOrder(srOrderDetails);
   } catch (err: any) {
-    // Unlock if API fails
-    await supabase.from("orders").update({ shiprocket_status: null }).eq("id", orderId).eq("shiprocket_status", 'creating');
-    return { success: false, error: err.message || "Failed to create Shiprocket Order." };
+    // If the error was explicitly thrown by our helper because of a 4xx/5xx rejection response from Shiprocket,
+    // we know no order was created, so it is safe to unlock. 
+    // If it's a network timeout (fetch throws before reading response), the order MIGHT exist on Shiprocket,
+    // so we shouldn't blindly unlock to prevent duplicates.
+    const errorMessage = err.message || "";
+    if (errorMessage.includes("Shiprocket Order Creation Failed")) {
+      await unlockOrder();
+      return { success: false, error: errorMessage };
+    } else {
+      // Network drop or timeout. Do NOT unlock.
+      return { success: false, error: "Network error during Shiprocket API call. The order status is locked as 'creating' because the order may have been created on Shiprocket. Please verify manually." };
+    }
   }
+
+  // 8. Persist Response
+  const { error: updateError } = await supabase
+    .from("orders")
+    .update({
+      shiprocket_order_id: response.order_id?.toString(),
+      shiprocket_shipment_id: response.shipment_id?.toString(),
+      shiprocket_status: response.status,
+      package_weight: packageDetails.weight,
+      package_length: packageDetails.length,
+      package_width: packageDetails.width,
+      package_height: packageDetails.height
+    })
+    .eq("id", orderId);
+
+  if (updateError) {
+    console.error("Failed to persist shiprocket IDs. Data may be desynced.", updateError);
+    // DO NOT UNLOCK. State remains 'creating' in DB while Shiprocket has real IDs. 
+    // This strictly prevents the admin from blindly retrying and duplicating the order.
+    return { success: false, error: "Shiprocket order created, but failed to save to database. DO NOT retry blindly. Verify on Shiprocket dashboard." };
+  }
+
+  revalidatePath(`/admin/orders/${orderId}`);
+  return { success: true };
 }
 
 export async function fetchCouriers(orderId: string) {
