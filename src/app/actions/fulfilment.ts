@@ -27,9 +27,22 @@ export async function sendOrderToShiprocket(orderId: string, packageDetails: { w
     return { success: false, error: "Order not found or database error." };
   }
 
-  // 2. Idempotency Check
-  if (order.shiprocket_order_id) {
-    return { success: false, error: "This order has already been sent to Shiprocket." };
+  // 2. Idempotency & Concurrency Check
+  if (order.shiprocket_order_id || order.shiprocket_status === 'creating') {
+    return { success: false, error: "This order is already being sent or has been sent to Shiprocket." };
+  }
+
+  // 2.5 Lock the order optimistically
+  const { data: lockData, error: lockError } = await supabase
+    .from("orders")
+    .update({ shiprocket_status: 'creating' })
+    .eq("id", orderId)
+    .is("shiprocket_order_id", null)
+    .neq("shiprocket_status", 'creating')
+    .select();
+
+  if (lockError || !lockData || lockData.length === 0) {
+    return { success: false, error: "Concurrency lock failed. Another process is handling this order." };
   }
 
   // 3. Pickup Location Validation
@@ -122,6 +135,8 @@ export async function sendOrderToShiprocket(orderId: string, packageDetails: { w
     revalidatePath(`/admin/orders/${orderId}`);
     return { success: true };
   } catch (err: any) {
+    // Unlock if API fails
+    await supabase.from("orders").update({ shiprocket_status: null }).eq("id", orderId).eq("shiprocket_status", 'creating');
     return { success: false, error: err.message || "Failed to create Shiprocket Order." };
   }
 }

@@ -3,8 +3,14 @@ const SHIPROCKET_BASE_URL = "https://apiv2.shiprocket.in";
 let shiprocketToken: string | null = null;
 let tokenExpiry: number | null = null;
 
-// Mock Mode Helper
-const isMockMode = () => !process.env.SHIPROCKET_API_EMAIL || process.env.SHIPROCKET_API_EMAIL.includes("placeholder");
+// Mock Mode Helper - Explicitly safe
+const isMockMode = () => {
+  if (process.env.SHIPROCKET_MODE === 'live') return false;
+  if (process.env.NODE_ENV === 'production' && process.env.SHIPROCKET_MODE !== 'mock') {
+    throw new Error("Shiprocket live integration requires SHIPROCKET_MODE='live' and valid credentials.");
+  }
+  return !process.env.SHIPROCKET_API_EMAIL || process.env.SHIPROCKET_API_EMAIL.includes("placeholder") || process.env.SHIPROCKET_MODE === 'mock';
+};
 
 export async function getShiprocketToken() {
   if (isMockMode()) return "mock-token-12345";
