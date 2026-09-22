@@ -83,6 +83,39 @@ export default function ProductForm({ categories, initialData }: { categories: a
     e.preventDefault();
     setLoading(true);
     
+    // Validations
+    if (parseFloat(formData.base_price) < 0) {
+      alert("Base price cannot be negative.");
+      setLoading(false);
+      return;
+    }
+    if (formData.discount_price && parseFloat(formData.discount_price) < 0) {
+      alert("Discount price cannot be negative.");
+      setLoading(false);
+      return;
+    }
+    if (formData.discount_price && parseFloat(formData.discount_price) > parseFloat(formData.base_price)) {
+      alert("Selling price cannot exceed MRP (Base Price).");
+      setLoading(false);
+      return;
+    }
+
+    const variantKeys = new Set();
+    for (const v of variants) {
+      if (parseInt(v.stock_quantity || "0") < 0) {
+        alert(`Stock quantity for ${v.size} / ${v.color} cannot be negative.`);
+        setLoading(false);
+        return;
+      }
+      const key = `${v.size}-${v.color}`.toLowerCase();
+      if (variantKeys.has(key)) {
+        alert(`Duplicate variant found: ${v.size} / ${v.color}. Please ensure all Size/Color combinations are unique.`);
+        setLoading(false);
+        return;
+      }
+      variantKeys.add(key);
+    }
+
     try {
       let productId = initialData?.id;
 
@@ -154,7 +187,12 @@ export default function ProductForm({ categories, initialData }: { categories: a
       await supabase.from('product_variants').delete().eq('product_id', initialData.id);
       
       const { error } = await supabase.from('products').delete().eq('id', initialData.id);
-      if (error) throw error;
+      if (error) {
+        if (error.code === '23503' || error.message.includes('foreign key constraint')) {
+          throw new Error("Cannot delete product because it has been ordered by customers or added to carts. Please set it to Inactive instead to preserve order history.");
+        }
+        throw error;
+      }
       
       router.push('/admin/products');
       router.refresh();

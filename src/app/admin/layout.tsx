@@ -1,7 +1,7 @@
 import { createClient } from "@/lib/supabase/server";
 import { redirect } from "next/navigation";
 import Link from "next/link";
-import { LayoutDashboard, Package, Tags, ShoppingCart, Users, Ticket, MessageSquare } from "lucide-react";
+import { LayoutDashboard, Package, Tags, ShoppingCart, Users, Ticket, MessageSquare, ClipboardList } from "lucide-react";
 
 export const dynamic = "force-dynamic";
 
@@ -26,6 +26,7 @@ export default async function AdminLayout({ children }: { children: React.ReactN
   const navItems = [
     { name: "Dashboard", href: "/admin", icon: LayoutDashboard },
     { name: "Products", href: "/admin/products", icon: Package },
+    { name: "Inventory", href: "/admin/inventory", icon: ClipboardList },
     { name: "Categories", href: "/admin/categories", icon: Tags },
     { name: "Orders", href: "/admin/orders", icon: ShoppingCart },
     { name: "Customers", href: "/admin/customers", icon: Users },
