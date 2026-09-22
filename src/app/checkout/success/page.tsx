@@ -10,33 +10,43 @@ function SuccessContent() {
   const orderId = searchParams.get("order_id");
 
   return (
-    <div className="min-h-[70vh] flex flex-col items-center justify-center py-12 px-4 sm:px-6 lg:px-8">
-      <div className="max-w-md w-full bg-white dark:bg-transparent p-8 rounded-lg shadow-sm border border-gray-200 dark:border-primary/20 text-center">
-        <div className="w-16 h-16 bg-green-100 dark:bg-green-900/50 rounded-full flex items-center justify-center mx-auto mb-6">
-          <CheckCircle className="w-8 h-8 text-green-600 dark:text-green-400" />
+    <div className="min-h-[70vh] flex flex-col items-center justify-center py-16 px-4 sm:px-6 lg:px-8">
+      <div className="max-w-lg w-full bg-white dark:bg-white/5 p-8 md:p-12 rounded-2xl shadow-sm border border-gray-200 dark:border-white/10 text-center relative overflow-hidden">
+        {/* Decorative background element */}
+        <div className="absolute -top-24 -right-24 w-48 h-48 bg-green-50 dark:bg-green-900/20 rounded-full blur-3xl -z-10"></div>
+        <div className="absolute -bottom-24 -left-24 w-48 h-48 bg-primary/5 dark:bg-primary/10 rounded-full blur-3xl -z-10"></div>
+
+        <div className="w-20 h-20 bg-green-100 dark:bg-green-900/30 rounded-full flex items-center justify-center mx-auto mb-6 shadow-inner">
+          <CheckCircle className="w-10 h-10 text-green-600 dark:text-green-400" />
         </div>
-        <h1 className="text-3xl font-bold text-gray-900 dark:text-white mb-2">Order Confirmed!</h1>
-        <p className="text-gray-600 dark:text-white/70 mb-8">
-          Thank you for shopping with BLUE ناز. Your payment was successful and an email receipt has been sent.
+        <h1 className="text-3xl font-serif font-bold text-gray-900 dark:text-white mb-3">Order Confirmed!</h1>
+        <p className="text-gray-600 dark:text-white/70 mb-8 leading-relaxed">
+          Thank you for shopping with <span className="font-semibold text-primary dark:text-white">BLUE ناز</span>. Your payment was successful and an email receipt has been sent.
         </p>
         
-        {orderId && (
-          <div className="bg-gray-50 dark:bg-primary/5 p-4 rounded text-left mb-8">
-            <p className="text-sm text-gray-500 dark:text-white/60 mb-1">Order Reference:</p>
-            <p className="font-mono font-medium text-gray-900 dark:text-white break-all">{orderId}</p>
+        {orderId ? (
+          <div className="bg-gray-50 dark:bg-white/5 border border-gray-100 dark:border-white/10 p-5 rounded-lg text-left mb-8 shadow-sm">
+            <p className="text-xs text-gray-500 dark:text-white/60 mb-1 uppercase tracking-wider font-semibold">Order Reference</p>
+            <p className="font-mono font-bold text-gray-900 dark:text-white text-sm break-all">{orderId}</p>
+          </div>
+        ) : (
+          <div className="bg-yellow-50 dark:bg-yellow-900/20 border border-yellow-200 dark:border-yellow-900/50 p-4 rounded-lg text-left mb-8">
+            <p className="text-sm text-yellow-800 dark:text-yellow-200">
+              Your order was successful, but we couldn't retrieve the Order ID from the URL. You can check your account for details.
+            </p>
           </div>
         )}
 
-        <div className="space-y-4">
+        <div className="flex flex-col sm:flex-row gap-4">
           <Link 
             href="/account"
-            className="block w-full bg-primary text-primary-foreground py-3 rounded font-bold hover:opacity-90"
+            className="flex-1 bg-primary text-white dark:text-primary-foreground py-3.5 rounded-lg font-bold hover:opacity-90 transition-opacity shadow-sm"
           >
-            View Order Status
+            View Order
           </Link>
           <Link 
             href="/"
-            className="block w-full bg-white dark:bg-transparent text-primary dark:text-white border border-primary py-3 rounded font-bold hover:bg-gray-50 dark:hover:bg-primary/10"
+            className="flex-1 bg-white dark:bg-transparent text-primary dark:text-white border border-primary dark:border-white/20 py-3.5 rounded-lg font-bold hover:bg-gray-50 dark:hover:bg-white/5 transition-colors"
           >
             Continue Shopping
           </Link>

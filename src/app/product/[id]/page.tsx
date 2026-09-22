@@ -74,30 +74,33 @@ export default async function ProductDetail({ params }: { params: Promise<{ id: 
   const typedReviews = (reviews || []) as any[];
 
   return (
-    <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12 min-h-[70vh]">
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-12">
+    <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-12 py-4 md:py-12 min-h-[70vh] pb-40 md:pb-12">
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-8 md:gap-16">
         {/* Left: Gallery */}
-        <div>
+        <div className="w-full">
           <ProductGallery images={typedProduct.images} />
         </div>
 
         {/* Right: Details & Options */}
-        <div className="flex flex-col">
-          <h1 className="text-3xl font-bold text-gray-900 dark:text-white mb-2">{typedProduct.name}</h1>
+        <div className="flex flex-col mt-4 md:mt-0">
+          <h1 className="text-2xl md:text-4xl font-serif font-bold text-gray-900 dark:text-white mb-3 tracking-tight">{typedProduct.name}</h1>
           
-          <div className="flex items-center space-x-4 mb-6">
+          <div className="flex items-center space-x-3 mb-6">
             {typedProduct.discount_price ? (
               <>
                 <span className="text-2xl font-bold text-primary dark:text-white">₹{typedProduct.discount_price.toFixed(2)}</span>
                 <span className="text-lg text-gray-500 dark:text-white/60 line-through">₹{typedProduct.base_price.toFixed(2)}</span>
-                <span className="bg-red-100 text-red-800 text-xs font-semibold px-2 py-1 rounded">SALE</span>
+                <span className="bg-red-50 dark:bg-red-900/30 text-red-600 dark:text-red-400 text-xs font-bold px-2.5 py-1 rounded-sm tracking-widest uppercase">
+                  {Math.round(((typedProduct.base_price - typedProduct.discount_price) / typedProduct.base_price) * 100)}% OFF
+                </span>
               </>
             ) : (
               <span className="text-2xl font-bold text-primary dark:text-white">₹{typedProduct.base_price.toFixed(2)}</span>
             )}
+            <span className="text-xs text-gray-400 dark:text-gray-500 ml-auto">Inclusive of all taxes</span>
           </div>
 
-          <div className="prose prose-sm text-gray-600 dark:text-white/80 mb-8 border-b border-gray-200 dark:border-white/20 pb-8">
+          <div className="prose prose-sm text-gray-600 dark:text-white/80 mb-8 border-b border-gray-200 dark:border-white/10 pb-8 leading-relaxed">
             <p>{typedProduct.description || "No description available."}</p>
           </div>
 
@@ -106,20 +109,22 @@ export default async function ProductDetail({ params }: { params: Promise<{ id: 
       </div>
 
       {/* Reviews Section */}
-      <div className="mt-20 border-t border-gray-200 dark:border-white/20 pt-12">
-        <h2 className="text-2xl font-bold text-gray-900 dark:text-white mb-8">Customer Reviews</h2>
+      <div className="mt-16 md:mt-24 border-t border-gray-200 dark:border-white/10 pt-12">
+        <h2 className="text-xl md:text-2xl font-serif font-bold text-gray-900 dark:text-white mb-8">Customer Reviews</h2>
         {typedReviews.length === 0 ? (
-          <p className="text-gray-500 dark:text-white/60">No reviews yet. Be the first to review this product!</p>
+          <div className="bg-gray-50 dark:bg-white/5 rounded-lg p-8 text-center">
+            <p className="text-gray-500 dark:text-white/60">No reviews yet. Be the first to review this product!</p>
+          </div>
         ) : (
-          <div className="space-y-8">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
             {typedReviews.map((review) => (
-              <div key={review.id} className="border-b border-gray-200 dark:border-white/20 pb-6">
-                <div className="flex items-center space-x-2 mb-2">
+              <div key={review.id} className="bg-gray-50 dark:bg-white/5 p-6 rounded-lg">
+                <div className="flex items-center space-x-2 mb-3">
                   <span className="font-semibold text-gray-900 dark:text-white">{review.users?.name || 'Anonymous'}</span>
-                  <span className="text-yellow-400">{'★'.repeat(review.rating)}{'☆'.repeat(5 - review.rating)}</span>
+                  <span className="text-primary dark:text-white text-sm">{'★'.repeat(review.rating)}{'☆'.repeat(5 - review.rating)}</span>
                 </div>
-                <p className="text-gray-600 dark:text-white/80">{review.comment}</p>
-                <p className="text-xs text-gray-400 dark:text-white/40 mt-2">{new Date(review.created_at).toLocaleDateString()}</p>
+                <p className="text-gray-600 dark:text-white/80 text-sm leading-relaxed">{review.comment}</p>
+                <p className="text-xs text-gray-400 dark:text-white/40 mt-4">{new Date(review.created_at).toLocaleDateString()}</p>
               </div>
             ))}
           </div>

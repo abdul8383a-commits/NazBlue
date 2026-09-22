@@ -1,6 +1,7 @@
 import { createClient } from '@/lib/supabase/server';
 import Link from 'next/link';
 import Image from 'next/image';
+import ProductCard from '@/components/ProductCard';
 
 export default async function Home() {
   const supabase = await createClient();
@@ -10,7 +11,7 @@ export default async function Home() {
     .from('products')
     .select('*')
     .eq('is_active', true)
-    .limit(6);
+    .limit(8);
 
   let displayProducts = products || [];
 
@@ -27,6 +28,7 @@ export default async function Home() {
         id: 'mock-2',
         name: 'Elegant White Summer Dress',
         base_price: 89.99,
+        discount_price: 79.99,
         images: ['https://images.unsplash.com/photo-1515347619362-6734f7117541?q=80&w=600&auto=format&fit=crop'],
       },
       {
@@ -34,6 +36,12 @@ export default async function Home() {
         name: 'BLUE ناز Essential Ribbed Knit',
         base_price: 45.00,
         images: ['https://images.unsplash.com/photo-1618354691373-d851c5c3a990?q=80&w=600&auto=format&fit=crop'],
+      },
+      {
+        id: 'mock-4',
+        name: 'Relaxed Fit Chinos',
+        base_price: 65.00,
+        images: ['https://images.unsplash.com/photo-1624378439575-d10787e97d19?q=80&w=600&auto=format&fit=crop'],
       }
     ] as any[];
   }
@@ -62,7 +70,7 @@ export default async function Home() {
         </div>
         
         {/* Editorial Hero Image */}
-        <div className="w-full relative h-[40vh] md:h-[75vh] min-h-[300px] bg-gray-100 dark:bg-white/5 rounded-2xl overflow-hidden shadow-sm">
+        <div className="w-full relative h-[40vh] md:h-[75vh] min-h-[300px] bg-gray-100 dark:bg-[#163A7A]/20 rounded-2xl overflow-hidden shadow-sm">
           <Image
             src="/hero.jpg"
             alt="BLUE ناز Collection"
@@ -75,35 +83,16 @@ export default async function Home() {
       </div>
 
       {/* Divider Section */}
-      <div className="border-t border-b border-primary/20 py-4 mb-12 flex justify-between items-center text-sm text-primary/70">
-        <span className="font-medium">The current run</span>
-        <span>{displayProducts.length} pieces</span>
+      <div className="border-t border-b border-primary/20 dark:border-white/20 py-4 mb-12 flex justify-between items-center text-sm text-primary/70 dark:text-white/70">
+        <span className="font-medium uppercase tracking-widest text-xs">The current run</span>
+        <span className="font-medium">{displayProducts.length} pieces</span>
       </div>
 
       {/* Product Grid */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-x-8 gap-y-10 sm:gap-y-16">
-        {displayProducts.map((product) => {
-          const imageSrc = product.images?.[0] || 'https://via.placeholder.com/600x600?text=No+Image';
-          return (
-            <Link key={product.id} href={`/product/${product.id}`} className="group block">
-              <div className="relative aspect-square bg-[#E8E6E1] mb-6 overflow-hidden">
-                <Image 
-                  src={imageSrc} 
-                  alt={product.name}
-                  fill
-                  sizes="(max-width: 640px) 100vw, (max-width: 1024px) 50vw, 33vw"
-                  className="object-cover group-hover:scale-105 transition-transform duration-700 ease-out"
-                />
-              </div>
-              <div className="flex justify-between items-start text-sm md:text-base text-primary">
-                <h3 className="font-medium pr-4 line-clamp-1">{product.name}</h3>
-                <span className="font-semibold whitespace-nowrap">
-                  ${product.discount_price || product.base_price}
-                </span>
-              </div>
-            </Link>
-          )
-        })}
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-x-4 gap-y-10 sm:gap-x-6 sm:gap-y-12">
+        {displayProducts.map((product) => (
+          <ProductCard key={product.id} product={product as any} />
+        ))}
       </div>
       
       {displayProducts.length === 0 && (

@@ -7,17 +7,28 @@
   --color-primary-foreground: #E8E7E5;
   --color-background: #E8E7E5;
   --color-foreground: #163A7A;
-  --font-sans: var(--font-geist-sans);
+  
+  --color-muted: #d4d4d4;
+  --color-muted-foreground: #666666;
+  --color-border: #cccccc;
+  
+  --font-sans: var(--font-geist-sans), Arial, Helvetica, sans-serif;
   --font-mono: var(--font-geist-mono);
   --font-arabic: var(--font-arabic);
   --font-serif: var(--font-serif);
+  
+  --radius-sm: 0.25rem;
+  --radius-md: 0.5rem;
+  --radius-lg: 1rem;
+  --radius-full: 9999px;
 }
 
 body {
   background: var(--color-background);
   color: var(--color-foreground);
-  font-family: var(--font-sans), Arial, Helvetica, sans-serif;
+  font-family: var(--font-sans);
   transition: background-color 0.3s ease, color 0.3s ease;
+  -webkit-tap-highlight-color: transparent;
 }
 
 @layer base {
@@ -26,5 +37,18 @@ body {
     --color-primary-foreground: #163A7A;
     --color-background: #163A7A;
     --color-foreground: #E8E7E5;
+    
+    --color-muted: #333333;
+    --color-muted-foreground: #999999;
+    --color-border: #333333;
+  }
+}
+
+@layer utilities {
+  .pb-safe {
+    padding-bottom: max(env(safe-area-inset-bottom), 1rem);
+  }
+  .pt-safe {
+    padding-top: max(env(safe-area-inset-top), 1rem);
   }
 }

@@ -17,19 +17,27 @@ export default async function SearchCatalog({
   const products = await fetchProducts({ searchQuery: q, categorySlug: category, sort });
 
   return (
-    <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 min-h-[70vh]">
-      <h1 className="text-3xl font-bold text-primary mb-8">
-        Search Results for "{q}"
-      </h1>
-      <div className="flex flex-col md:flex-row gap-8">
-        <aside className="w-full md:w-64 flex-shrink-0">
+    <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-12 py-10 md:py-16 min-h-[70vh]">
+      <div className="mb-8 md:mb-12 border-b border-primary/10 dark:border-white/10 pb-6">
+        <h1 className="text-3xl md:text-4xl font-serif tracking-tight text-primary dark:text-white">Search Results</h1>
+        <p className="mt-3 md:mt-4 text-primary/70 dark:text-white/70 max-w-xl text-sm md:text-base">
+          {q ? `Showing results for "${q}"` : "All products"}
+        </p>
+      </div>
+      <div className="flex flex-col md:flex-row gap-6 md:gap-12">
+        <aside className="w-full md:w-64 flex-shrink-0 z-20">
           <FilterSidebar />
         </aside>
         <main className="flex-1">
           {products.length === 0 ? (
-            <div className="py-12 text-center text-gray-500">No products found matching your search.</div>
+            <div className="py-20 text-center text-primary/60 dark:text-white/60">
+              <p className="text-lg mb-4">No products found matching your search.</p>
+              <a href="/search" className="text-sm font-bold border-b border-primary dark:border-white pb-1 hover:opacity-70 transition-opacity">
+                Clear Filters & Search
+              </a>
+            </div>
           ) : (
-            <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6">
+            <div className="grid grid-cols-2 lg:grid-cols-3 gap-x-4 gap-y-10 sm:gap-x-6 sm:gap-y-12">
               {products.map((product) => (
                 <ProductCard key={product.id} product={product} />
               ))}

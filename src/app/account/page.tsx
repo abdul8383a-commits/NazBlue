@@ -22,7 +22,7 @@ export default async function Account() {
   // Fetch orders
   const { data: orders } = await supabase
     .from('orders')
-    .select('*, order_items(*, product_variants(size, color, products(name)))')
+    .select('*, order_items(*, product_variants(size, color, products(name, images)))')
     .eq('user_id', user.id)
     .order('created_at', { ascending: false });
 

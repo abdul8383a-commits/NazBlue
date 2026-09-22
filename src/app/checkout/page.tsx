@@ -8,6 +8,8 @@ import { Country, State, City } from "country-state-city";
 import Select, { components } from "react-select";
 import Script from "next/script";
 import { useTheme } from "next-themes";
+import Image from "next/image";
+import { Lock, CreditCard, ShieldCheck } from "lucide-react";
 
 const CustomInput = (props: any) => {
   return <components.Input {...props} autoComplete="new-password" />;
@@ -26,7 +28,6 @@ export default function CheckoutPage() {
   const { resolvedTheme } = useTheme();
   
   const [mounted, setMounted] = useState(false);
-  const [step, setStep] = useState<1 | 2 | 3>(1);
   const [stockError, setStockError] = useState<string | null>(null);
   const [validating, setValidating] = useState(false);
   
@@ -80,11 +81,11 @@ export default function CheckoutPage() {
     control: (base: any, state: any) => ({
       ...base,
       minHeight: '50px',
-      borderColor: isDark ? 'rgba(255, 255, 255, 0.3)' : '#d1d5db',
+      borderColor: isDark ? 'rgba(255, 255, 255, 0.2)' : '#d1d5db',
       backgroundColor: 'transparent',
       boxShadow: state.isFocused ? (isDark ? '0 0 0 1px rgba(255,255,255,0.3)' : '0 0 0 1px #163A7A') : 'none',
       '&:hover': {
-        borderColor: isDark ? 'rgba(255, 255, 255, 0.5)' : '#163A7A'
+        borderColor: isDark ? 'rgba(255, 255, 255, 0.4)' : '#163A7A'
       }
     }),
     singleValue: (base: any) => ({
@@ -138,7 +139,6 @@ export default function CheckoutPage() {
   useEffect(() => {
     setMounted(true);
     
-    // Check if user is authenticated and load profile
     const initCheckout = async () => {
       const { data: { session } } = await supabase.auth.getSession();
       if (!session) {
@@ -148,7 +148,7 @@ export default function CheckoutPage() {
       
       let initialData = null;
 
-      // 1. Try to load from database first (Default Address)
+      // 1. Try DB Default Address
       const { data: profile } = await supabase.from("users").select("*").eq("id", session.user.id).single();
       if (profile && (profile.address_line1 || profile.city || profile.country)) {
         initialData = {
@@ -164,16 +164,14 @@ export default function CheckoutPage() {
           pincode: profile.pincode || ""
         };
       } else {
-        // 2. Fallback to localStorage if no default address in DB
+        // 2. Fallback to localStorage
         const savedAddress = localStorage.getItem("blue_naz_saved_address");
         if (savedAddress) {
           try {
             initialData = JSON.parse(savedAddress);
-          } catch (e) {
-            // ignore parse error
-          }
+          } catch (e) {}
         } else if (profile) {
-          // 3. Fallback to just filling basic profile info
+          // 3. Fallback to basic profile
           initialData = {
             ...formData,
             firstName: profile.first_name || "",
@@ -201,12 +199,11 @@ export default function CheckoutPage() {
     
     initCheckout();
 
-    if (!isLoading && items.length === 0 && step === 1) {
+    if (!isLoading && items.length === 0) {
       router.push("/cart");
     }
-  }, [items, isLoading, router, step, supabase]);
+  }, [items, isLoading, router, supabase]);
 
-  // Check pincode when length is 6
   useEffect(() => {
     const checkPin = async () => {
       if (formData.pincode.length === 6) {
@@ -278,16 +275,19 @@ export default function CheckoutPage() {
   };
 
   const isAddressComplete = Object.entries(formData).every(([key, val]) => {
-    if (key === 'state' && stateOptions.length === 0) return true; // State is optional if no states exist
-    if (key === 'city' && cityOptions.length === 0 && val.trim().length === 0) return false; // City is required even if manually typed
+    if (key === 'state' && stateOptions.length === 0) return true;
+    if (key === 'city' && cityOptions.length === 0 && val.trim().length === 0) return false;
     return val.trim().length > 0;
   }) && !pincodeError;
+  
   const fullAddressString = JSON.stringify(formData); 
 
-  const validateStockAndProceed = async () => {
-    setValidating(true);
-    setStockError(null);
+  const handlePayment = async () => {
     try {
+      setValidating(true);
+      setStockError(null);
+      
+      // 1. Stock Validation (Previously Step 2 -> Step 3 transition)
       let allInStock = true;
       for (const item of items) {
         const { data, error } = await supabase
@@ -302,21 +302,16 @@ export default function CheckoutPage() {
         }
       }
 
-      if (allInStock) {
-        setStep(3);
-      } else {
-        setStockError("One or more items in your cart are out of stock. Please return to the cart and update quantities.");
+      if (!allInStock) {
+        setStockError("One or more items in your cart are out of stock. Please return to your bag to update quantities.");
+        setValidating(false);
+        return;
       }
-    } catch (e) {
-      setStockError("Failed to validate stock. Please try again.");
-    }
-    setValidating(false);
-  };
-
-  const handlePayment = async () => {
-    try {
-      setValidating(true);
       
+      // Save address backup
+      localStorage.setItem("blue_naz_saved_address", fullAddressString);
+
+      // 2. Order Creation
       const res = await fetch("/api/razorpay/create-order", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -333,6 +328,7 @@ export default function CheckoutPage() {
         throw new Error(orderData.error || "Failed to create order");
       }
 
+      // 3. Razorpay Initiation
       const options = {
         key: process.env.NEXT_PUBLIC_RAZORPAY_KEY_ID,
         amount: orderData.amount,
@@ -358,6 +354,12 @@ export default function CheckoutPage() {
             router.push(`/checkout/success?order_id=${orderData.dbOrderId}`);
           } else {
             alert(`Payment verification failed: ${verifyData.error}`);
+            setValidating(false);
+          }
+        },
+        modal: {
+          ondismiss: function() {
+            setValidating(false);
           }
         },
         prefill: {
@@ -366,62 +368,62 @@ export default function CheckoutPage() {
           contact: `${formData.phoneCode}${formData.phone}`
         },
         theme: {
-          color: "#1E3A8A"
+          color: "#163A7A"
         }
       };
 
       const rzp = new window.Razorpay(options);
       rzp.on('payment.failed', function (response: any) {
         alert(`Payment Failed: ${response.error.description}`);
+        setValidating(false);
       });
       rzp.open();
       
     } catch (error: any) {
       alert(error.message);
-    } finally {
       setValidating(false);
     }
   };
 
-  if (isLoading) return <div className="py-20 text-center min-h-[70vh]">Loading...</div>;
+  if (isLoading) {
+    return (
+      <div className="max-w-7xl mx-auto px-4 py-20 flex flex-col items-center justify-center min-h-[70vh]">
+        <div className="w-8 h-8 border-4 border-primary/20 border-t-primary dark:border-white/20 dark:border-t-white rounded-full animate-spin"></div>
+        <p className="mt-4 text-gray-500 dark:text-white/60">Loading checkout...</p>
+      </div>
+    );
+  }
+
+  if (items.length === 0) {
+    return null; // Redirect handled in useEffect
+  }
 
   return (
-    <div className="max-w-3xl mx-auto px-4 py-12 min-h-[70vh]">
+    <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-12 py-8 md:py-12 min-h-[70vh] pb-40 md:pb-12">
       <Script src="https://checkout.razorpay.com/v1/checkout.js" strategy="lazyOnload" />
-      <h1 className="text-3xl font-bold text-primary mb-8 text-center">Checkout</h1>
-
-      {/* Stepper */}
-      <div className="flex justify-between items-center mb-12 relative">
-        <div className="absolute top-1/2 left-0 w-full h-0.5 bg-gray-300 dark:bg-white/20 -z-10 transform -translate-y-1/2"></div>
-        {[
-          { num: 1, label: "Shipping" },
-          { num: 2, label: "Review" },
-          { num: 3, label: "Payment" }
-        ].map((s) => (
-          <div key={s.num} className="flex flex-col items-center bg-background px-4">
-            <div className={`w-8 h-8 rounded-full flex items-center justify-center font-bold text-sm border-2 ${
-              step >= s.num ? "bg-primary text-primary-foreground border-primary" : "bg-transparent text-gray-400 dark:text-white/40 border-gray-300 dark:border-white/20"
-            }`}>
-              {s.num}
-            </div>
-            <span className={`text-xs mt-2 font-medium ${step >= s.num ? "text-primary dark:text-white" : "text-gray-400 dark:text-white/40"}`}>
-              {s.label}
-            </span>
-          </div>
-        ))}
+      
+      <div className="mb-8 md:mb-12 border-b border-gray-200 dark:border-white/10 pb-4">
+        <h1 className="text-2xl md:text-3xl font-serif font-bold text-gray-900 dark:text-white tracking-tight">Checkout</h1>
       </div>
 
-      <div className="bg-white dark:bg-transparent rounded-lg shadow-sm border border-gray-200 dark:border-white/20 p-6 md:p-8">
-        {step === 1 && (
-          <div className="space-y-6">
-            <h2 className="text-2xl font-bold text-gray-900 dark:text-white mb-6">Shipping Address</h2>
+      <div className="flex flex-col lg:flex-row gap-10 lg:gap-16">
+        
+        {/* Left Column: Form & Items */}
+        <div className="flex-1 space-y-10">
+          
+          {/* Section: Contact & Delivery */}
+          <section className="bg-white dark:bg-white/5 rounded-xl border border-gray-200 dark:border-white/10 p-6 md:p-8 shadow-sm">
+            <h2 className="text-xl font-bold text-gray-900 dark:text-white mb-6 uppercase tracking-wider flex items-center gap-2">
+              <span className="bg-primary text-white w-6 h-6 rounded-full inline-flex items-center justify-center text-xs">1</span> 
+              Delivery Address
+            </h2>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <input name="firstName" value={formData.firstName} onChange={handleInputChange} placeholder="First Name" required className="w-full p-3 border border-gray-300 dark:border-white/30 rounded focus:outline-none focus:border-primary bg-transparent dark:text-white dark:placeholder:text-white/40" />
-              <input name="lastName" value={formData.lastName} onChange={handleInputChange} placeholder="Last Name" required className="w-full p-3 border border-gray-300 dark:border-white/30 rounded focus:outline-none focus:border-primary bg-transparent dark:text-white dark:placeholder:text-white/40" />
-              <input name="email" type="email" value={formData.email} onChange={handleInputChange} placeholder="Email" required className="w-full p-3 border border-gray-300 dark:border-white/30 rounded focus:outline-none focus:border-primary md:col-span-2 bg-transparent dark:text-white dark:placeholder:text-white/40" />
+              <input name="firstName" value={formData.firstName} onChange={handleInputChange} placeholder="First Name" required className="w-full p-3.5 border border-gray-300 dark:border-white/20 rounded-md focus:outline-none focus:border-primary bg-white dark:bg-transparent dark:text-white placeholder:text-gray-400 text-sm" />
+              <input name="lastName" value={formData.lastName} onChange={handleInputChange} placeholder="Last Name" required className="w-full p-3.5 border border-gray-300 dark:border-white/20 rounded-md focus:outline-none focus:border-primary bg-white dark:bg-transparent dark:text-white placeholder:text-gray-400 text-sm" />
+              <input name="email" type="email" value={formData.email} onChange={handleInputChange} placeholder="Email Address" required className="w-full p-3.5 border border-gray-300 dark:border-white/20 rounded-md focus:outline-none focus:border-primary md:col-span-2 bg-white dark:bg-transparent dark:text-white placeholder:text-gray-400 text-sm" />
               
               <div className="flex md:col-span-2">
-                <div className="w-36 flex-shrink-0">
+                <div className="w-32 md:w-36 flex-shrink-0">
                   <Select
                     instanceId="phoneCodeSelect"
                     components={{ Input: CustomInput }}
@@ -434,15 +436,16 @@ export default function CheckoutPage() {
                         ...commonSelectStyles.control(base, state),
                         borderTopRightRadius: 0,
                         borderBottomRightRadius: 0,
-                        backgroundColor: isDark ? 'transparent' : '#f9fafb'
+                        backgroundColor: isDark ? 'transparent' : '#f9fafb',
+                        minHeight: '52px'
                       })
                     }}
                   />
                 </div>
-                <input name="phone" type="tel" value={formData.phone} onChange={handleInputChange} placeholder="Phone Number" required className="w-full p-3 border border-gray-300 dark:border-white/30 border-l-0 rounded-r focus:outline-none focus:border-primary bg-transparent dark:text-white dark:placeholder:text-white/40" />
+                <input name="phone" type="tel" value={formData.phone} onChange={handleInputChange} placeholder="Phone Number" required className="w-full p-3.5 border border-gray-300 dark:border-white/20 border-l-0 rounded-r-md focus:outline-none focus:border-primary bg-white dark:bg-transparent dark:text-white placeholder:text-gray-400 text-sm" />
               </div>
 
-              <input name="addressLine1" value={formData.addressLine1} onChange={handleInputChange} placeholder="Street Address" required className="w-full p-3 border border-gray-300 dark:border-white/30 rounded focus:outline-none focus:border-primary md:col-span-2 bg-transparent dark:text-white dark:placeholder:text-white/40" />
+              <input name="addressLine1" value={formData.addressLine1} onChange={handleInputChange} placeholder="Street Address" required className="w-full p-3.5 border border-gray-300 dark:border-white/20 rounded-md focus:outline-none focus:border-primary md:col-span-2 bg-white dark:bg-transparent dark:text-white placeholder:text-gray-400 text-sm" />
               
               <div className="md:col-span-2">
                 <Select
@@ -482,105 +485,123 @@ export default function CheckoutPage() {
                     styles={commonSelectStyles}
                   />
                 ) : (
-                  <input name="city" value={formData.city} onChange={handleInputChange} placeholder="City" required disabled={!selectedStateCode} className="w-full p-3 border border-gray-300 dark:border-white/30 rounded focus:outline-none focus:border-primary disabled:bg-gray-100 dark:disabled:bg-white/5 bg-transparent dark:text-white dark:placeholder:text-white/40" style={{ minHeight: '50px' }} />
+                  <input name="city" value={formData.city} onChange={handleInputChange} placeholder="City" required disabled={!selectedStateCode} className="w-full p-3.5 border border-gray-300 dark:border-white/20 rounded-md focus:outline-none focus:border-primary disabled:bg-gray-100 dark:disabled:bg-white/5 bg-white dark:bg-transparent dark:text-white placeholder:text-gray-400 text-sm" style={{ minHeight: '50px' }} />
                 )}
               </div>
-              <div>
-                <input name="pincode" value={formData.pincode} onChange={handleInputChange} placeholder="Pincode (6 digits)" maxLength={6} required className="w-full p-3 border border-gray-300 dark:border-white/30 rounded focus:outline-none focus:border-primary bg-transparent dark:text-white dark:placeholder:text-white/40" />
-                {checkingPincode && <p className="text-xs text-gray-500 dark:text-white/60 mt-1">Checking serviceability...</p>}
-                {pincodeError && <p className="text-xs text-red-600 dark:text-red-400 mt-1">{pincodeError}</p>}
-                {edd && <p className="text-xs text-green-600 dark:text-green-400 mt-1">Delivery by: {new Date(edd).toLocaleDateString()}</p>}
+              <div className="md:col-span-2">
+                <input name="pincode" value={formData.pincode} onChange={handleInputChange} placeholder="Pincode (6 digits)" maxLength={6} required className="w-full p-3.5 border border-gray-300 dark:border-white/20 rounded-md focus:outline-none focus:border-primary bg-white dark:bg-transparent dark:text-white placeholder:text-gray-400 text-sm" />
+                {checkingPincode && <p className="text-xs text-gray-500 dark:text-white/60 mt-2">Checking serviceability...</p>}
+                {pincodeError && <p className="text-xs text-red-600 dark:text-red-400 mt-2 font-medium">{pincodeError}</p>}
+                {edd && <p className="text-xs text-green-600 dark:text-green-400 mt-2 font-medium">Estimated Delivery: {new Date(edd).toLocaleDateString(undefined, { weekday: 'short', month: 'short', day: 'numeric' })}</p>}
               </div>
             </div>
-            
-            <button 
-              onClick={() => {
-                localStorage.setItem("blue_naz_saved_address", JSON.stringify(formData));
-                setStep(2);
-              }}
-              disabled={!isAddressComplete}
-              className="w-full bg-primary text-primary-foreground py-3 rounded font-bold hover:opacity-90 disabled:opacity-50 mt-4"
-            >
-              Continue to Review
-            </button>
-          </div>
-        )}
+          </section>
 
-        {step === 2 && (
-          <div className="space-y-6">
-            <h2 className="text-2xl font-bold text-gray-900 dark:text-white">Review Order</h2>
-            
-            <div className="bg-gray-50 dark:bg-primary/5 p-4 rounded border dark:border-white/20 text-sm">
-              <h3 className="font-semibold text-gray-900 dark:text-white mb-2">Shipping To:</h3>
-              <p className="text-gray-600 dark:text-white/70">
-                {formData.firstName} {formData.lastName}<br/>
-                {formData.addressLine1}<br/>
-                {formData.city}, {formData.state} {formData.pincode}<br/>
-                {formData.country}<br/>
-                {formData.phoneCode} {formData.phone}
-              </p>
-              {edd && <p className="mt-2 text-green-700 dark:text-green-400 font-medium">Estimated Delivery: {new Date(edd).toLocaleDateString()}</p>}
-              <button onClick={() => setStep(1)} className="text-primary dark:text-white hover:underline mt-2 inline-block">Edit Address</button>
-            </div>
-
-            <div className="border-t dark:border-white/20 pt-6">
-              <h3 className="font-semibold text-gray-900 dark:text-white mb-4">Items ({items.length})</h3>
-              <div className="space-y-4">
-                {items.map(item => (
-                  <div key={item.id} className="flex justify-between items-center text-sm">
-                    <div className="flex items-center space-x-3">
-                      <span className="font-medium text-gray-900 dark:text-white">{item.quantity}x</span>
-                      <span className="text-gray-600 dark:text-white/70">{item.variant.product.name} (Size: {item.variant.size})</span>
+          {/* Section: Order Items */}
+          <section className="bg-white dark:bg-white/5 rounded-xl border border-gray-200 dark:border-white/10 p-6 md:p-8 shadow-sm">
+            <h2 className="text-xl font-bold text-gray-900 dark:text-white mb-6 uppercase tracking-wider flex items-center gap-2">
+              <span className="bg-primary text-white w-6 h-6 rounded-full inline-flex items-center justify-center text-xs">2</span> 
+              Review Items
+            </h2>
+            <div className="space-y-6">
+              {items.map(item => {
+                const product = item.variant.product;
+                const price = product.discount_price || product.base_price;
+                return (
+                  <div key={item.id} className="flex gap-4 border-b border-gray-100 dark:border-white/5 pb-4 last:border-0 last:pb-0">
+                    <div className="relative w-20 h-24 flex-shrink-0 bg-gray-100 dark:bg-white/5 rounded overflow-hidden">
+                      <Image 
+                        src={product.images && product.images.length > 0 ? product.images[0] : 'https://via.placeholder.com/150'} 
+                        alt={product.name}
+                        fill
+                        sizes="80px" 
+                        className="object-cover"
+                      />
                     </div>
-                    <span className="font-medium dark:text-white">${((item.variant.product.discount_price || item.variant.product.base_price) * item.quantity).toFixed(2)}</span>
+                    <div className="flex-1 flex flex-col justify-center">
+                      <h3 className="font-semibold text-gray-900 dark:text-white text-sm line-clamp-1">{product.name}</h3>
+                      <p className="text-xs text-gray-500 dark:text-white/60 mt-1">
+                        {item.variant.color !== 'Default' && `${item.variant.color} | `}Size: {item.variant.size}
+                      </p>
+                      <p className="text-xs text-gray-500 dark:text-white/60 mt-1">Qty: {item.quantity}</p>
+                    </div>
+                    <div className="text-right flex flex-col justify-center">
+                      <p className="font-bold text-gray-900 dark:text-white text-sm">₹{(price * item.quantity).toFixed(2)}</p>
+                    </div>
                   </div>
-                ))}
-              </div>
+                );
+              })}
             </div>
+          </section>
+          
+        </div>
 
-            <div className="border-t dark:border-white/20 pt-6 space-y-2 text-sm text-gray-600 dark:text-white/70">
-              <div className="flex justify-between"><span>Subtotal</span><span>${subtotal.toFixed(2)}</span></div>
-              <div className="flex justify-between"><span>Shipping</span><span>${shipping.toFixed(2)}</span></div>
-              <div className="flex justify-between"><span>Tax</span><span>${tax.toFixed(2)}</span></div>
-              <div className="flex justify-between text-lg font-bold text-gray-900 dark:text-white pt-4 border-t dark:border-white/20">
-                <span>Total</span><span>${grandTotal.toFixed(2)}</span>
-              </div>
-            </div>
-
-            {stockError && <div className="p-3 bg-red-100 text-red-700 rounded text-sm">{stockError}</div>}
-
-            <button 
-              onClick={validateStockAndProceed}
-              disabled={validating}
-              className="w-full bg-primary text-primary-foreground py-3 rounded font-bold hover:opacity-90 disabled:opacity-50"
-            >
-              {validating ? "Checking Stock..." : "Proceed to Payment"}
-            </button>
-          </div>
-        )}
-
-        {step === 3 && (
-          <div className="space-y-8 text-center py-8">
-            <h2 className="text-2xl font-bold text-gray-900 dark:text-white">Payment</h2>
-            <p className="text-gray-600 dark:text-white/70 max-w-md mx-auto">
-              Please pay <span className="font-bold text-primary dark:text-white">${grandTotal.toFixed(2)}</span> to complete your order securely via Razorpay.
-            </p>
+        {/* Right Column: Summary & Payment CTA */}
+        <div className="w-full lg:w-96 flex-shrink-0">
+          <div className="bg-gray-50 dark:bg-white/5 p-6 md:p-8 rounded-xl border border-gray-200 dark:border-white/10 lg:sticky lg:top-24 shadow-sm">
+            <h2 className="text-lg font-bold text-gray-900 dark:text-white mb-6 uppercase tracking-wider">Order Summary</h2>
             
-            <div className="max-w-sm mx-auto">
+            <div className="space-y-4 text-sm text-gray-600 dark:text-white/70 border-b border-gray-200 dark:border-white/10 pb-6 mb-6">
+              <div className="flex justify-between">
+                <span>Subtotal</span>
+                <span className="font-medium text-gray-900 dark:text-white">₹{subtotal.toFixed(2)}</span>
+              </div>
+              <div className="flex justify-between">
+                <span>Estimated Shipping</span>
+                <span className="font-medium text-gray-900 dark:text-white">{shipping === 0 ? "Free" : `₹${shipping.toFixed(2)}`}</span>
+              </div>
+              <div className="flex justify-between">
+                <span>Estimated Tax (8%)</span>
+                <span className="font-medium text-gray-900 dark:text-white">₹{tax.toFixed(2)}</span>
+              </div>
+            </div>
+
+            <div className="flex justify-between items-end mb-8">
+              <span className="text-base font-bold text-gray-900 dark:text-white uppercase tracking-wider">Total</span>
+              <span className="text-2xl font-bold text-primary dark:text-white">₹{Math.max(0, grandTotal).toFixed(2)}</span>
+            </div>
+
+            {stockError && (
+              <div className="mb-6 p-4 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-900/50 rounded-lg text-sm text-red-700 dark:text-red-400 font-medium leading-relaxed">
+                {stockError}
+              </div>
+            )}
+
+            {!isAddressComplete && (
+              <div className="mb-6 text-sm text-yellow-600 dark:text-yellow-500 font-medium flex items-center gap-2">
+                <span className="w-1.5 h-1.5 rounded-full bg-yellow-500"></span>
+                Please complete all required address fields.
+              </div>
+            )}
+
+            {/* Desktop normal button, Mobile sticky button */}
+            <div className="fixed bottom-[4.5rem] md:bottom-0 left-0 right-0 p-4 md:p-0 bg-white/90 dark:bg-gray-900/90 backdrop-blur-md md:bg-transparent md:backdrop-blur-none border-t border-gray-200 dark:border-white/10 md:border-none z-40 md:z-auto md:relative shadow-[0_-4px_10px_rgba(0,0,0,0.05)] md:shadow-none safe-area-bottom">
               <button 
                 onClick={handlePayment}
-                disabled={validating}
-                className="w-full bg-[#1E3A8A] text-white py-4 rounded font-bold hover:bg-[#1E3A8A]/90 transition-colors shadow-lg disabled:opacity-50"
+                disabled={!isAddressComplete || validating}
+                className="w-full flex items-center justify-center gap-2 bg-primary text-white dark:text-primary-foreground py-4 rounded-lg font-bold hover:opacity-90 disabled:opacity-50 disabled:cursor-not-allowed transition-all shadow-sm text-base"
               >
-                {validating ? "Processing..." : "Pay Now with Razorpay"}
+                {validating ? (
+                  <>
+                    <div className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin"></div>
+                    Processing...
+                  </>
+                ) : (
+                  <>
+                    <Lock className="w-4 h-4" />
+                    Place Order & Pay
+                  </>
+                )}
               </button>
+              
+              <div className="mt-4 flex items-center justify-center gap-4 text-xs text-gray-500 dark:text-white/50 hidden md:flex">
+                <span className="flex items-center gap-1"><ShieldCheck className="w-4 h-4" /> Secure Payment</span>
+                <span className="flex items-center gap-1"><CreditCard className="w-4 h-4" /> Powered by Razorpay</span>
+              </div>
             </div>
             
-            <button onClick={() => setStep(2)} className="text-gray-500 dark:text-white/60 hover:text-primary dark:hover:text-white text-sm font-medium mt-4">
-              Go Back
-            </button>
           </div>
-        )}
+        </div>
       </div>
     </div>
   );
