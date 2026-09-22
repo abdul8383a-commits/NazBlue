@@ -3,6 +3,7 @@ import { notFound } from "next/navigation";
 import Link from "next/link";
 import { ArrowLeft, Package, User, MapPin, CreditCard, ShoppingBag } from "lucide-react";
 import OrderStatusEditor from "@/components/admin/OrderStatusEditor";
+import FulfilmentManager from "@/components/admin/FulfilmentManager";
 import Image from "next/image";
 
 export const dynamic = "force-dynamic";
@@ -138,6 +139,8 @@ export default async function AdminOrderDetailPage({ params }: { params: Promise
         {/* Right Column - Status, Customer, Payment */}
         <div className="space-y-6">
           
+          <FulfilmentManager order={order} />
+
           {/* Status Editor Component */}
           <div className="bg-white p-6 rounded-lg border border-gray-200 shadow-sm">
             <OrderStatusEditor orderId={order.id} currentStatus={order.status} currentPaymentStatus={order.payment_status} />

@@ -9,7 +9,8 @@ export async function POST(req: Request) {
       return NextResponse.json({ error: "Pincode is required" }, { status: 400 });
     }
 
-    const data = await checkServiceability(pincode);
+    // pickupPincode, deliveryPincode, weight, cod
+    const data = await checkServiceability("110030", pincode, 1, 0);
 
     // If Shiprocket fails or is unconfigured, return a mock success so checkout isn't blocked
     if (!data || !data.available_courier_companies || data.available_courier_companies.length === 0) {

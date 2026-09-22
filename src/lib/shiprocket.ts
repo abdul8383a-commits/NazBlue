@@ -3,7 +3,12 @@ const SHIPROCKET_BASE_URL = "https://apiv2.shiprocket.in";
 let shiprocketToken: string | null = null;
 let tokenExpiry: number | null = null;
 
+// Mock Mode Helper
+const isMockMode = () => !process.env.SHIPROCKET_API_EMAIL || process.env.SHIPROCKET_API_EMAIL.includes("placeholder");
+
 export async function getShiprocketToken() {
+  if (isMockMode()) return "mock-token-12345";
+
   if (shiprocketToken && tokenExpiry && Date.now() < tokenExpiry) {
     return shiprocketToken;
   }
@@ -27,13 +32,21 @@ export async function getShiprocketToken() {
   return shiprocketToken;
 }
 
-export async function checkServiceability(deliveryPincode: string) {
+export async function checkServiceability(pickupPincode: string, deliveryPincode: string, weight: number, cod: number = 0) {
+  if (isMockMode()) {
+    // Return mock available couriers
+    return {
+      available_courier_companies: [
+        { courier_company_id: 1, courier_name: "Mock Express", estimated_delivery_days: "2", rate: 50 },
+        { courier_company_id: 2, courier_name: "Mock Logistics", estimated_delivery_days: "4", rate: 40 },
+      ]
+    };
+  }
+
   try {
     const token = await getShiprocketToken();
-    const pickupPincode = "110030"; // Placeholder for merchant pincode
-    
     const response = await fetch(
-      `${SHIPROCKET_BASE_URL}/v1/external/courier/serviceability/?pickup_postcode=${pickupPincode}&delivery_postcode=${deliveryPincode}&weight=1&cod=0`,
+      `${SHIPROCKET_BASE_URL}/v1/external/courier/serviceability/?pickup_postcode=${pickupPincode}&delivery_postcode=${deliveryPincode}&weight=${weight}&cod=${cod}`,
       {
         method: "GET",
         headers: { Authorization: `Bearer ${token}` },
@@ -50,6 +63,14 @@ export async function checkServiceability(deliveryPincode: string) {
 }
 
 export async function createShiprocketOrder(orderDetails: any) {
+  if (isMockMode()) {
+    return {
+      order_id: `mock-sr-order-${Date.now()}`,
+      shipment_id: `mock-sr-shipment-${Date.now()}`,
+      status: "NEW"
+    };
+  }
+
   const token = await getShiprocketToken();
   const response = await fetch(`${SHIPROCKET_BASE_URL}/v1/external/orders/create/ad-hoc`, {
     method: "POST",
@@ -69,7 +90,139 @@ export async function createShiprocketOrder(orderDetails: any) {
   return data;
 }
 
+export async function generateAWB(shipmentId: string, courierId: string) {
+  if (isMockMode()) {
+    return {
+      awb_assign_status: 1,
+      response: {
+        data: {
+          awb_code: `MOCK-AWB-${Date.now()}`,
+          courier_company_id: courierId,
+          courier_name: "Mock Express"
+        }
+      }
+    };
+  }
+
+  const token = await getShiprocketToken();
+  const response = await fetch(`${SHIPROCKET_BASE_URL}/v1/external/courier/assign/awb`, {
+    method: "POST",
+    headers: { 
+      "Content-Type": "application/json",
+      Authorization: `Bearer ${token}` 
+    },
+    body: JSON.stringify({
+      shipment_id: shipmentId,
+      courier_id: courierId
+    }),
+  });
+
+  if (!response.ok) {
+    const errorText = await response.text();
+    throw new Error(`AWB Generation Failed: ${errorText}`);
+  }
+
+  return await response.json();
+}
+
+export async function requestPickup(shipmentId: string) {
+  if (isMockMode()) {
+    return {
+      pickup_status: 1,
+      response: {
+        pickup_token_number: `MOCK-PICKUP-${Date.now()}`,
+        pickup_scheduled_date: new Date().toISOString()
+      }
+    };
+  }
+
+  const token = await getShiprocketToken();
+  const response = await fetch(`${SHIPROCKET_BASE_URL}/v1/external/courier/generate/pickup`, {
+    method: "POST",
+    headers: { 
+      "Content-Type": "application/json",
+      Authorization: `Bearer ${token}` 
+    },
+    body: JSON.stringify({
+      shipment_id: [shipmentId]
+    }),
+  });
+
+  if (!response.ok) {
+    const errorText = await response.text();
+    throw new Error(`Pickup Request Failed: ${errorText}`);
+  }
+
+  return await response.json();
+}
+
+export async function generateShippingLabel(shipmentId: string) {
+  if (isMockMode()) {
+    return {
+      label_created: 1,
+      label_url: "https://example.com/mock-label.pdf"
+    };
+  }
+
+  const token = await getShiprocketToken();
+  const response = await fetch(`${SHIPROCKET_BASE_URL}/v1/external/courier/generate/label`, {
+    method: "POST",
+    headers: { 
+      "Content-Type": "application/json",
+      Authorization: `Bearer ${token}` 
+    },
+    body: JSON.stringify({
+      shipment_id: [shipmentId]
+    }),
+  });
+
+  if (!response.ok) {
+    const errorText = await response.text();
+    throw new Error(`Label Generation Failed: ${errorText}`);
+  }
+
+  return await response.json();
+}
+
+export async function generateInvoice(orderIds: string[]) {
+  if (isMockMode()) {
+    return {
+      is_invoice_created: true,
+      invoice_url: "https://example.com/mock-invoice.pdf"
+    };
+  }
+
+  const token = await getShiprocketToken();
+  const response = await fetch(`${SHIPROCKET_BASE_URL}/v1/external/orders/print/invoice`, {
+    method: "POST",
+    headers: { 
+      "Content-Type": "application/json",
+      Authorization: `Bearer ${token}` 
+    },
+    body: JSON.stringify({
+      ids: orderIds
+    }),
+  });
+
+  if (!response.ok) {
+    const errorText = await response.text();
+    throw new Error(`Invoice Generation Failed: ${errorText}`);
+  }
+
+  return await response.json();
+}
+
 export async function trackOrder(shipmentId: string) {
+  if (isMockMode()) {
+    return {
+      tracking_data: {
+        track_status: 1,
+        shipment_status: 3, // In transit
+        shipment_track: [{ current_status: "In Transit" }]
+      }
+    };
+  }
+
   try {
     const token = await getShiprocketToken();
     const response = await fetch(`${SHIPROCKET_BASE_URL}/v1/external/courier/track/shipment/${shipmentId}`, {
