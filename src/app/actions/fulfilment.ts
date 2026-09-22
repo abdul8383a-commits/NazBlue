@@ -259,3 +259,52 @@ export async function getOrderInvoice(orderId: string) {
     return { success: false, error: err.message };
   }
 }
+
+export async function testShiprocketConnection() {
+  const supabase = await createClient();
+  await verifyAdmin(supabase);
+
+  try {
+    // 1. Force a real login attempt using raw fetch to avoid mock bypass in getShiprocketToken if currently in mock mode
+    // The user wants to test the production credentials explicitly.
+    const email = process.env.SHIPROCKET_API_EMAIL;
+    const password = process.env.SHIPROCKET_API_PASSWORD;
+
+    if (!email || !password || email.includes("placeholder")) {
+      return { success: false, error: "Production credentials (SHIPROCKET_API_EMAIL, SHIPROCKET_API_PASSWORD) are missing or invalid in server environment." };
+    }
+
+    const authRes = await fetch("https://apiv2.shiprocket.in/v1/external/auth/login", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ email, password }),
+    });
+
+    if (!authRes.ok) {
+       return { success: false, error: "Authentication failed. Invalid credentials or Shiprocket API is down." };
+    }
+    
+    const authData = await authRes.json();
+    if (!authData.token) {
+       return { success: false, error: "Authentication succeeded but no token returned." };
+    }
+
+    // 2. Perform a safe, read-only serviceability check
+    const serviceRes = await fetch(
+      `https://apiv2.shiprocket.in/v1/external/courier/serviceability/?pickup_postcode=110030&delivery_postcode=400001&weight=1&cod=0`,
+      {
+        method: "GET",
+        headers: { Authorization: `Bearer ${authData.token}` },
+      }
+    );
+
+    if (!serviceRes.ok) {
+       return { success: true, message: "Authentication successful, but serviceability check failed (possibly invalid pickup pincode)." };
+    }
+
+    return { success: true, message: "Authentication and read-only Serviceability check passed successfully." };
+
+  } catch (err: any) {
+    return { success: false, error: "Connection error: " + err.message };
+  }
+}
